@@ -1,0 +1,70 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.coinContainer {
+  perspective: 1000px;
+  width: 200px;
+  height: 200px;
+}
+
+.coin {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 1s;
+  transform-style: preserve-3d;
+}
+
+.side {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  color: white;
+}
+
+.front {
+  background: linear-gradient(135deg, #fbbf24, #d97706);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+  border: 4px solid #f59e0b;
+}
+
+.back {
+  transform: rotateY(180deg);
+  background: linear-gradient(135deg, #94a3b8, #475569);
+  box-shadow: 0 0 20px rgba(148, 163, 184, 0.5);
+  border: 4px solid #64748b;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.result {
+  height: 2rem;
+  transition: opacity 0.3s;
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.resultYazi {
+  color: #fbbf24;
+}
+
+.resultTura {
+  color: #94a3b8;
+}

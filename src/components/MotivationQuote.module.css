@@ -1,0 +1,39 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    width: 100%;
+}
+
+.quoteButton {
+    background: linear-gradient(135deg, #10b981, #3b82f6);
+    min-width: 200px;
+}
+
+.quoteBox {
+    padding: 2rem;
+    max-width: 600px;
+    width: 100%;
+    text-align: center;
+    animation: fadeIn 0.5s ease;
+}
+
+.quoteText {
+    font-size: 1.2rem;
+    line-height: 1.6;
+    font-style: italic;
+    color: var(--foreground);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
