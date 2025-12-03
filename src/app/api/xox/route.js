@@ -155,7 +155,7 @@ function processGameCommand(user, command) {
         return { message: `@${user} pes etti. Kazanan: @${winner} 🏆` };
     }
 
-    return { message: "Komut anlaşılamadı. (!xox davet, !xox kabul, !xox 1-9)" };
+    return { message: `Komut anlaşılamadı. (!xox davet, !xox kabul, !xox 1-9). Algılanan: "${fullCommand}"` };
 }
 
 // --- HANDLERS ---
