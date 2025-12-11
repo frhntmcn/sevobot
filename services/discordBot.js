@@ -6,6 +6,8 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
     ],
 });
 
@@ -57,6 +59,13 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
 
     } catch (error) {
         console.error('Error in guildMemberUpdate listener:', error);
+    }
+});
+
+client.on('messageCreate', async (message) => {
+    if (message.content === '!ping') {
+        console.log(`Ping command received from ${message.author.tag}`);
+        await message.reply('Pong! 🏓 (Bot is online and listening)');
     }
 });
 
