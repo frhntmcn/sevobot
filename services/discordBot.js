@@ -14,6 +14,8 @@ client.once('ready', () => {
 });
 
 client.on('guildMemberUpdate', async (oldMember, newMember) => {
+    console.log(`User update detected for: ${newMember.user.tag}`);
+
     try {
         // Get the roles that were added
         const oldRoles = oldMember.roles.cache;
@@ -22,22 +24,34 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
         // Filter for roles that are in newMember but not in oldMember
         const addedRoles = newRoles.filter(role => !oldRoles.has(role.id));
 
-        if (addedRoles.size === 0) return;
+        if (addedRoles.size === 0) {
+            console.log("No new roles detected.");
+            return;
+        }
 
         addedRoles.forEach(async (role) => {
-            const messageTemplate = roleMessages[role.name];
+            console.log(`Role added: "${role.name}"`);
+
+            // Attempt exact match first
+            let messageTemplate = roleMessages[role.name];
+
+            // If no exact match, try trimming whitespace
+            if (!messageTemplate) {
+                const trimmedName = role.name.trim();
+                messageTemplate = roleMessages[trimmedName];
+                if (messageTemplate) console.log(`Matched role via trim: "${trimmedName}"`);
+            }
 
             if (messageTemplate) {
                 try {
-                    // Replace {user} with the username or mention if needed. 
-                    // For DMs, a direct address is usually nice.
                     const message = messageTemplate.replace('{user}', newMember.user.username);
-
                     await newMember.user.send(message);
-                    console.log(`Sent DM to ${newMember.user.tag} for role ${role.name}`);
+                    console.log(`SUCCESS: Sent DM to ${newMember.user.tag} for role ${role.name}`);
                 } catch (error) {
-                    console.error(`Could not send DM to ${newMember.user.tag}. They might have DMs disabled.`, error);
+                    console.error(`FAILED: Could not send DM to ${newMember.user.tag}. Check their privacy settings.`, error);
                 }
+            } else {
+                console.log(`No message found for role: "${role.name}". Check config/roleMessages.js for exact match.`);
             }
         });
 
