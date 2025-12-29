@@ -40,7 +40,11 @@ client.once('ready', async () => {
     try {
         console.log('Started refreshing application (/) commands.');
 
-        // Register for each guild individually for immediate update (bypasses 1-hour global cache)
+        // 1. DELETE Global Commands (Cleanup ghost commands)
+        await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
+        console.log('Successfully deleted all Global commands.');
+
+        // 2. Register for each guild individually for immediate update (bypasses 1-hour global cache)
         const guilds = client.guilds.cache.map(guild => guild.id);
         for (const guildId of guilds) {
             await rest.put(
