@@ -1,5 +1,8 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
 const roleMessages = require('../config/roleMessages');
+const { startStreamManager } = require('./streamManager');
+const fs = require('fs');
+const path = require('path');
 
 const client = new Client({
     intents: [
@@ -11,61 +14,96 @@ const client = new Client({
     ],
 });
 
-client.once('ready', () => {
+// Load Commands
+client.commands = new Collection();
+const commandsPath = path.join(process.cwd(), 'commands');
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+const commandsToRegister = [];
+
+for (const file of commandFiles) {
+    const filePath = path.join(commandsPath, file);
+    const command = require(filePath);
+    if ('data' in command && 'execute' in command) {
+        client.commands.set(command.data.name, command);
+        commandsToRegister.push(command.data.toJSON());
+    } else {
+        console.warn(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+    }
+}
+
+client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
+    console.log(`Loaded ${client.commands.size} commands.`);
+
+    // Register Slash Commands
+    const rest = new REST().setToken(process.env.DISCORD_TOKEN);
+    try {
+        console.log('Started refreshing application (/) commands.');
+        // Use applicationCommands (Global) - takes time to update but easier for general use
+        // Or Message user to use specific guild ID for dev?
+        // Using global for now as it's cleaner.
+        await rest.put(
+            Routes.applicationCommands(client.user.id),
+            { body: commandsToRegister },
+        );
+        console.log('Successfully reloaded application (/) commands.');
+    } catch (error) {
+        console.error(error);
+    }
+
+    // Start Stream Monitor
+    startStreamManager(client);
 });
 
-client.on('guildMemberUpdate', async (oldMember, newMember) => {
-    console.log(`User update detected for: ${newMember.user.tag}`);
+// Interaction Handler
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isChatInputCommand()) return;
+
+    const command = client.commands.get(interaction.commandName);
+
+    if (!command) {
+        console.error(`No command matching ${interaction.commandName} was found.`);
+        return;
+    }
 
     try {
-        // Get the roles that were added
+        await command.execute(interaction);
+    } catch (error) {
+        console.error(error);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+        } else {
+            await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+        }
+    }
+});
+
+// Legacy Role Logic
+client.on('guildMemberUpdate', async (oldMember, newMember) => {
+    // ... existing logic ...
+    try {
         const oldRoles = oldMember.roles.cache;
         const newRoles = newMember.roles.cache;
-
-        // Filter for roles that are in newMember but not in oldMember
         const addedRoles = newRoles.filter(role => !oldRoles.has(role.id));
-
-        if (addedRoles.size === 0) {
-            console.log("No new roles detected.");
-            return;
-        }
+        if (addedRoles.size === 0) return;
 
         addedRoles.forEach(async (role) => {
-            console.log(`Role added: "${role.name}"`);
-
-            // Attempt exact match first
-            let messageTemplate = roleMessages[role.name];
-
-            // If no exact match, try trimming whitespace
-            if (!messageTemplate) {
-                const trimmedName = role.name.trim();
-                messageTemplate = roleMessages[trimmedName];
-                if (messageTemplate) console.log(`Matched role via trim: "${trimmedName}"`);
-            }
-
+            let messageTemplate = roleMessages[role.name] || roleMessages[role.name.trim()];
             if (messageTemplate) {
                 try {
-                    const message = messageTemplate.replace('{user}', newMember.user.username);
-                    await newMember.user.send(message);
-                    console.log(`SUCCESS: Sent DM to ${newMember.user.tag} for role ${role.name}`);
+                    await newMember.user.send(messageTemplate.replace('{user}', newMember.user.username));
+                    console.log(`Sent DM to ${newMember.user.tag}`);
                 } catch (error) {
-                    console.error(`FAILED: Could not send DM to ${newMember.user.tag}. Check their privacy settings.`, error);
+                    console.error(`Could not send DM to ${newMember.user.tag}`, error);
                 }
-            } else {
-                console.log(`No message found for role: "${role.name}". Check config/roleMessages.js for exact match.`);
             }
         });
-
-    } catch (error) {
-        console.error('Error in guildMemberUpdate listener:', error);
-    }
+    } catch (error) { console.error(error); }
 });
 
 client.on('messageCreate', async (message) => {
     if (message.content === '!ping') {
-        console.log(`Ping command received from ${message.author.tag}`);
-        await message.reply('Pong! 🏓 (Bot is online and listening)');
+        await message.reply('Pong! (Legacy command)');
     }
 });
 
