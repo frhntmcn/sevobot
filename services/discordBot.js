@@ -22,14 +22,23 @@ const commandsToRegister = [];
 
 for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
-    const command = require(filePath);
-    if ('data' in command && 'execute' in command) {
-        client.commands.set(command.data.name, command);
-        commandsToRegister.push(command.data.toJSON());
-    } else {
-        console.warn(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+    try {
+        // Clear require cache to ensure fresh load
+        delete require.cache[require.resolve(filePath)];
+        const command = require(filePath);
+
+        if ('data' in command && 'execute' in command) {
+            client.commands.set(command.data.name, command);
+            commandsToRegister.push(command.data.toJSON());
+            console.log(`[SUCCESS] Loaded command: ${command.data.name}`);
+        } else {
+            console.warn(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+        }
+    } catch (err) {
+        console.error(`[ERROR] Failed to load command file: ${file}`, err);
     }
 }
+console.log("Commands to Register:", commandsToRegister.map(c => c.name));
 
 client.once('ready', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
