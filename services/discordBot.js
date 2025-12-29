@@ -39,16 +39,19 @@ client.once('ready', async () => {
     const rest = new REST().setToken(process.env.DISCORD_TOKEN);
     try {
         console.log('Started refreshing application (/) commands.');
-        // Use applicationCommands (Global) - takes time to update but easier for general use
-        // Or Message user to use specific guild ID for dev?
-        // Using global for now as it's cleaner.
-        await rest.put(
-            Routes.applicationCommands(client.user.id),
-            { body: commandsToRegister },
-        );
-        console.log('Successfully reloaded application (/) commands.');
+
+        // Register for each guild individually for immediate update (bypasses 1-hour global cache)
+        const guilds = client.guilds.cache.map(guild => guild.id);
+        for (const guildId of guilds) {
+            await rest.put(
+                Routes.applicationGuildCommands(client.user.id, guildId),
+                { body: commandsToRegister },
+            );
+            console.log(`Successfully registered commands for guild: ${guildId}`);
+        }
+
     } catch (error) {
-        console.error(error);
+        console.error('Error registering commands:', error);
     }
 
     // Start Stream Monitor
@@ -57,6 +60,7 @@ client.once('ready', async () => {
 
 // Interaction Handler
 client.on('interactionCreate', async interaction => {
+    console.log(`Interaction received: ${interaction.commandName} (Type: ${interaction.type})`);
     if (!interaction.isChatInputCommand()) return;
 
     const command = client.commands.get(interaction.commandName);

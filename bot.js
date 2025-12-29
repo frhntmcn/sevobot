@@ -3,6 +3,7 @@
 // that is separate from your Next.js website.
 
 const { startDiscordBot } = require('./services/discordBot');
+require('dotenv').config();
 
 // Check for token
 const token = process.env.DISCORD_TOKEN;
