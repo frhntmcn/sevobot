@@ -13,7 +13,7 @@ module.exports = {
             option.setName('everyone')
                 .setDescription('@everyone etiketi atılsın mı?')
                 .setRequired(false))
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+        .setDefaultMemberPermissions(null),
 
     async execute(interaction) {
         const channel = interaction.options.getChannel('channel');

@@ -17,7 +17,7 @@ module.exports = {
             option.setName('identifier')
                 .setDescription('Kullanıcı adı')
                 .setRequired(true))
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+        .setDefaultMemberPermissions(null),
 
     async execute(interaction) {
         const platform = interaction.options.getString('platform');

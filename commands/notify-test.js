@@ -5,7 +5,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('notify-test')
         .setDescription('Bildirim ayarlarını test eder.')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+        .setDefaultMemberPermissions(null),
 
     async execute(interaction) {
         const guild = storage.getGuild(interaction.guildId);

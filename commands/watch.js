@@ -13,7 +13,7 @@ module.exports = {
             sub.setName('kick')
                 .setDescription('Kick yayıncısı ekle')
                 .addStringOption(option => option.setName('slug').setDescription('Kick kullanıcı adı (slug)').setRequired(true)))
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+        .setDefaultMemberPermissions(null),
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
