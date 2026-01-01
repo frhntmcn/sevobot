@@ -1,4 +1,5 @@
 const storage = require('./storage');
+const logger = require('./logger');
 
 // --- Helpers ---
 
@@ -22,7 +23,7 @@ async function getTwitchAccessToken() {
     if (twitchAccessToken && now < twitchTokenExpiry) return twitchAccessToken;
 
     try {
-        console.log("🔄 Requesting new Twitch Access Token...");
+        logger.log("🔄 Requesting new Twitch Access Token...");
         const params = new URLSearchParams({
             client_id: process.env.TWITCH_CLIENT_ID,
             client_secret: process.env.TWITCH_CLIENT_SECRET,
@@ -39,10 +40,10 @@ async function getTwitchAccessToken() {
         const data = await res.json();
         twitchAccessToken = data.access_token;
         twitchTokenExpiry = now + (data.expires_in * 1000) - 60000;
-        console.log("✅ Twitch Token Acquired.");
+        logger.log("✅ Twitch Token Acquired.");
         return twitchAccessToken;
     } catch (e) {
-        console.error("❌ Failed to get Twitch Token:", e);
+        logger.error("❌ Failed to get Twitch Token:", e);
         return null;
     }
 }
@@ -54,7 +55,7 @@ async function checkTwitchStreams(channels) {
     if (!token) return [];
 
     const results = [];
-    console.log(`🔎 Checking ${channels.length} Twitch channels...`);
+    logger.log(`🔎 Checking ${channels.length} Twitch channels...`);
 
     for (let i = 0; i < channels.length; i += 100) {
         const chunk = channels.slice(i, i + 100);
@@ -69,15 +70,15 @@ async function checkTwitchStreams(channels) {
             });
 
             if (!res.ok) {
-                console.error(`❌ Twitch API Error: ${res.status} ${res.statusText}`);
+                logger.error(`❌ Twitch API Error: ${res.status} ${res.statusText}`);
                 continue;
             }
 
             const data = await res.json();
-            console.log(`✅ Twitch API: Found ${data.data.length} live streams in chunk.`);
+            logger.log(`✅ Twitch API: Found ${data.data.length} live streams in chunk.`);
             results.push(...data.data);
         } catch (e) {
-            console.error("❌ Twitch Check Error:", e);
+            logger.error("❌ Twitch Check Error:", e);
         }
     }
     return results;
@@ -89,7 +90,7 @@ async function checkKickStream(slug) {
     try {
         const res = await fetchWithTimeout(`https://kick.com/api/v1/channels/${slug}`);
         if (!res.ok) {
-            console.warn(`⚠️ Kick API for ${slug}: ${res.status}`);
+            logger.warn(`⚠️ Kick API for ${slug}: ${res.status}`);
             return null;
         }
 
@@ -107,7 +108,7 @@ async function checkKickStream(slug) {
         }
         return null;
     } catch (e) {
-        console.error(`❌ Kick Check Error for ${slug}:`, e.message);
+        logger.error(`❌ Kick Check Error for ${slug}:`, e.message);
         return null;
     }
 }
@@ -115,7 +116,7 @@ async function checkKickStream(slug) {
 // --- Main Manager ---
 
 async function runCheck(client) {
-    console.log("⏱️ --- Starting Stream Check Cycle ---");
+    logger.log("⏱️ --- Starting Stream Check Cycle ---");
     const watched = storage.getAllWatchedChannels();
     const twitchChannels = Array.from(watched.twitch);
     const kickChannels = Array.from(watched.kick);
@@ -129,17 +130,17 @@ async function runCheck(client) {
             await processStreamState(client, 'twitch', channel, stream);
         }
     } else {
-        console.log("ℹ️ No Twitch channels to check.");
+        logger.log("ℹ️ No Twitch channels to check.");
     }
 
     if (kickChannels.length > 0) {
-        console.log(`🔎 Checking ${kickChannels.length} Kick channels...`);
+        logger.log(`🔎 Checking ${kickChannels.length} Kick channels...`);
         await Promise.all(kickChannels.map(async (slug) => {
             const stream = await checkKickStream(slug);
             await processStreamState(client, 'kick', slug, stream);
         }));
     } else {
-        console.log("ℹ️ No Kick channels to check.");
+        logger.log("ℹ️ No Kick channels to check.");
     }
 }
 
@@ -184,7 +185,7 @@ async function processStreamState(client, platform, identifier, streamData) {
 }
 
 async function broadcastNotification(client, platform, identifier, info) {
-    console.log(`📢 Preparing notification for ${identifier} (${platform})...`);
+    logger.log(`📢 Preparing notification for ${identifier} (${platform})...`);
     const guildsData = storage.data.guilds;
 
     for (const [guildId, config] of Object.entries(guildsData)) {
@@ -195,19 +196,19 @@ async function broadcastNotification(client, platform, identifier, info) {
 
         const guild = client.guilds.cache.get(guildId);
         if (!guild) {
-            console.warn(`⚠️ Guild ${guildId} not found in cache.`);
+            logger.warn(`⚠️ Guild ${guildId} not found in cache.`);
             continue;
         }
 
         const channel = guild.channels.cache.get(config.notifyChannelId);
         if (!channel) {
-            console.warn(`⚠️ Notify channel ${config.notifyChannelId} missing for guild ${guild.name}`);
+            logger.warn(`⚠️ Notify channel ${config.notifyChannelId} missing for guild ${guild.name}`);
             continue;
         }
 
         const permissions = channel.permissionsFor(guild.members.me);
         if (!permissions.has('SendMessages')) {
-            console.error(`❌ Missing SendMessages permission in ${channel.name} (${guild.name})`);
+            logger.error(`❌ Missing SendMessages permission in ${channel.name} (${guild.name})`);
             continue;
         }
 
@@ -216,7 +217,7 @@ async function broadcastNotification(client, platform, identifier, info) {
             if (permissions.has('MentionEveryone')) {
                 mentionText = '@everyone ';
             } else {
-                console.warn(`⚠️ Missing 'Mention Everyone' permission in guild: ${guild.name}`);
+                logger.warn(`⚠️ Missing 'Mention Everyone' permission in guild: ${guild.name}`);
             }
         }
 
@@ -228,15 +229,15 @@ async function broadcastNotification(client, platform, identifier, info) {
                 content: msg,
                 allowedMentions: { parse: config.mentionsEnabled ? ['everyone'] : [] }
             });
-            console.log(`✅ Notification sent to ${guild.name} (#${channel.name})`);
+            logger.log(`✅ Notification sent to ${guild.name} (#${channel.name})`);
         } catch (err) {
-            console.error(`❌ Failed to send notification to ${guild.name}:`, err);
+            logger.error(`❌ Failed to send notification to ${guild.name}:`, err);
         }
     }
 }
 
 function startStreamManager(client) {
-    console.log("🚀 Stream Manager Initialized.");
+    logger.log("🚀 Stream Manager Initialized.");
     runCheck(client);
     setInterval(() => runCheck(client), 60 * 1000);
 }
