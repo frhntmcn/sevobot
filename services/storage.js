@@ -15,13 +15,18 @@ const defaultData = {
 
 class StorageService {
     constructor() {
-        this.data = defaultData;
+        this.data = null; // Lazy load
+    }
+
+    ensureLoaded() {
+        if (this.data) return;
         this.load();
     }
 
     load() {
+        this.data = defaultData; // Default fallback
         if (!fs.existsSync(DB_PATH)) {
-            this.save();
+            // Don't save immediately on load, wait for first write
             return;
         }
         try {
@@ -34,7 +39,6 @@ class StorageService {
 
         } catch (error) {
             console.error('Failed to load DB:', error);
-            // Backup corrupt file if needed? For now just keep memory state or init new.
         }
     }
 
@@ -53,6 +57,7 @@ class StorageService {
     // --- Guild Operations ---
 
     getGuild(guildId) {
+        this.ensureLoaded();
         if (!this.data.guilds[guildId]) {
             this.data.guilds[guildId] = {
                 notifyChannelId: null,
@@ -102,6 +107,7 @@ class StorageService {
     }
 
     getAllWatchedChannels() {
+        this.ensureLoaded();
         // Returns unique list of channels to monitor globally
         // Returns: { twitch: Set<string>, kick: Set<string> }
         const result = { twitch: new Set(), kick: new Set() };
@@ -120,6 +126,7 @@ class StorageService {
     // --- Dedupe & State Operations ---
 
     getStreamState(platform, identifier) {
+        this.ensureLoaded();
         const key = `${platform}:${identifier}`;
         return this.data.streamState[key] || { lastStatus: 'offline', lastNotified: 0, lastStreamId: null };
     }
