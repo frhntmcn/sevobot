@@ -182,6 +182,9 @@ async function runCheck(client) {
         logger.log("ℹ️ No Twitch channels to check.");
     }
 
+    /* 
+    // Kick is currently blocking Vercel IPs (Cloudflare 403). 
+    // Disabled to prevent log spam until a proxy solution is implemented.
     if (kickChannels.length > 0) {
         logger.log(`🔎 Checking ${kickChannels.length} Kick channels...`);
         await Promise.all(kickChannels.map(async (slug) => {
@@ -191,6 +194,8 @@ async function runCheck(client) {
     } else {
         logger.log("ℹ️ No Kick channels to check.");
     }
+    */
+    logger.log("⚠️ Kick checking disabled due to Cloudflare blocks on Vercel.");
 }
 
 async function processStreamState(client, platform, identifier, streamData) {
