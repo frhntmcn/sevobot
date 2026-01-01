@@ -16,26 +16,24 @@ const client = new Client({
 
 // Load Commands
 client.commands = new Collection();
-const commandsPath = path.join(process.cwd(), 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+// Load Commands Statically (Required for Vercel/Webpack)
+const commands = [
+    require('../commands/notify-channel.js'),
+    require('../commands/notify-test.js'),
+    require('../commands/unwatch.js'),
+    require('../commands/watch.js'),
+    require('../commands/watchlist.js')
+];
+
 const commandsToRegister = [];
 
-for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
-    try {
-        // Clear require cache to ensure fresh load
-        delete require.cache[require.resolve(filePath)];
-        const command = require(filePath);
-
-        if ('data' in command && 'execute' in command) {
-            client.commands.set(command.data.name, command);
-            commandsToRegister.push(command.data.toJSON());
-            console.log(`[SUCCESS] Loaded command: ${command.data.name}`);
-        } else {
-            console.warn(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
-        }
-    } catch (err) {
-        console.error(`[ERROR] Failed to load command file: ${file}`, err);
+for (const command of commands) {
+    if ('data' in command && 'execute' in command) {
+        client.commands.set(command.data.name, command);
+        commandsToRegister.push(command.data.toJSON());
+        console.log(`[SUCCESS] Loaded command: ${command.data.name}`);
+    } else {
+        console.warn(`[WARNING] A command is missing a required "data" or "execute" property.`);
     }
 }
 console.log("Commands to Register:", commandsToRegister.map(c => c.name));
