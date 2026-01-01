@@ -91,12 +91,22 @@ async function checkTwitchStreams(channels) {
 
 async function checkKickStream(slug) {
     try {
-        const res = await fetchWithTimeout(`https://kick.com/api/v1/channels/${slug}`, {
+        // Use v2 API which is often more stable for frontend requests
+        // Add full Chrome headers to look like a real browser
+        const res = await fetchWithTimeout(`https://kick.com/api/v2/channels/${slug}`, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'application/json',
-                'Referer': 'https://kick.com/',
-                'Accept-Language': 'en-US,en;q=0.9'
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache',
+                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"',
+                'Sec-Fetch-Dest': 'empty',
+                'Sec-Fetch-Mode': 'cors',
+                'Sec-Fetch-Site': 'same-origin',
+                'Referer': `https://kick.com/${slug}`
             }
         });
         if (!res.ok) {
