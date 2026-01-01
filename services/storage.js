@@ -25,10 +25,27 @@ class StorageService {
 
     load() {
         this.data = defaultData; // Default fallback
+
+        // On Vercel, data on /tmp is ephemeral. We try to seed it from the repo file.
+        const SEED_PATH = path.join(process.cwd(), 'data', 'db.json');
+
         if (!fs.existsSync(DB_PATH)) {
-            // Don't save immediately on load, wait for first write
-            return;
+            if (fs.existsSync(SEED_PATH)) {
+                try {
+                    // Copy seed file to writable /tmp location
+                    const seedContent = fs.readFileSync(SEED_PATH);
+                    fs.writeFileSync(DB_PATH, seedContent);
+                    console.log(`[STORAGE] Seeded database from ${SEED_PATH} to ${DB_PATH}`);
+                } catch (err) {
+                    console.error('[STORAGE] Failed to seed database:', err);
+                }
+            } else {
+                // No seed, save default
+                this.save();
+                return;
+            }
         }
+
         try {
             const fileContent = fs.readFileSync(DB_PATH, 'utf-8');
             this.data = JSON.parse(fileContent);
