@@ -132,4 +132,14 @@ const startDiscordBot = (token) => {
     client.login(token);
 };
 
-module.exports = { startDiscordBot };
+const getAuthenticatedClient = async () => {
+    if (!client.isReady()) {
+        console.log("Client not ready, logging in...");
+        await client.login(process.env.DISCORD_TOKEN);
+        // Wait for ready
+        await new Promise(resolve => client.once('ready', resolve));
+    }
+    return client;
+};
+
+module.exports = { startDiscordBot, getAuthenticatedClient, client };

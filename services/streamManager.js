@@ -242,4 +242,4 @@ function startStreamManager(client) {
     setInterval(() => runCheck(client), 60 * 1000);
 }
 
-module.exports = { startStreamManager };
+module.exports = { startStreamManager, runCheck };
