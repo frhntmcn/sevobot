@@ -210,10 +210,42 @@ async function broadcastNotification(client, platform, identifier, info) {
         }
 
         const permissions = channel.permissionsFor(guild.members.me);
-        if (!permissions.has('SendMessages')) {
-            logger.error(`❌ Missing SendMessages permission in ${channel.name} (${guild.name})`);
+        if (!permissions.has('SendMessages') || !permissions.has('ViewChannel') || !permissions.has('ReadMessageHistory')) {
+            logger.error(`❌ Missing permissions (Send/View/ReadHistory) in ${channel.name} (${guild.name})`);
             continue;
         }
+
+        // --- STATELESS DEDUPLICATION ---
+        // Vercel resets memory, so we check Discord history to see if we already notified.
+        try {
+            const messages = await channel.messages.fetch({ limit: 20 });
+            const streamUrl = platform === 'twitch' ? `twitch.tv/${identifier}` : `kick.com/${identifier}`;
+            const streamStart = new Date(info.started_at).getTime();
+
+            const alreadyNotified = messages.some(msg => {
+                // Check if message contains the streamer link
+                if (!msg.content.toLowerCase().includes(streamUrl.toLowerCase())) return false;
+
+                // If message is from THIS bot
+                if (msg.author.id !== client.user.id) return false;
+
+                // CRITICAL: If message was sent AFTER the stream started, it's a valid notification.
+                // We don't want to send another one.
+                return msg.createdTimestamp > streamStart;
+            });
+
+            if (alreadyNotified) {
+                logger.log(`⏭️ Skipping ${identifier}: Notification already exists in #${channel.name}.`);
+                continue;
+            }
+
+        } catch (err) {
+            logger.error(`⚠️ Failed to check message history in ${channel.name}:`, err);
+            // On error, we proceed safely? Or skip to avoid spam? 
+            // Better to skip if history fails to avoid potential spam loop.
+            continue;
+        }
+        // -------------------------------
 
         let mentionText = '';
         if (config.mentionsEnabled) {
