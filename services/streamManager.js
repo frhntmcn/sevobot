@@ -18,6 +18,9 @@ async function fetchWithTimeout(url, options = {}, timeout = 5000) {
 
 // --- Twitch Provider ---
 
+let twitchAccessToken = null;
+let twitchTokenExpiry = 0;
+
 async function getTwitchAccessToken() {
     const now = Date.now();
     if (twitchAccessToken && now < twitchTokenExpiry) return twitchAccessToken;
