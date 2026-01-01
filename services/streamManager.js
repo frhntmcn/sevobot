@@ -91,44 +91,73 @@ async function checkTwitchStreams(channels) {
 
 async function checkKickStream(slug) {
     try {
-        // Use v2 API which is often more stable for frontend requests
-        // Add full Chrome headers to look like a real browser
-        const res = await fetchWithTimeout(`https://kick.com/api/v2/channels/${slug}`, {
+        // Method 3: HTML Scraping (API is blocked by CF)
+        const res = await fetchWithTimeout(`https://kick.com/${slug}`, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'application/json',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.9',
                 'Cache-Control': 'no-cache',
                 'Pragma': 'no-cache',
                 'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
                 'Sec-Ch-Ua-Mobile': '?0',
                 'Sec-Ch-Ua-Platform': '"Windows"',
-                'Sec-Fetch-Dest': 'empty',
-                'Sec-Fetch-Mode': 'cors',
-                'Sec-Fetch-Site': 'same-origin',
-                'Referer': `https://kick.com/${slug}`
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'none',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1'
             }
         });
-        if (!res.ok) {
-            logger.warn(`⚠️ Kick API for ${slug}: ${res.status}`);
+
+        if (res.status === 403) {
+            logger.warn(`⚠️ Kick Cloudflare Block for ${slug} (403 HTML).`);
             return null;
         }
 
-        const data = await res.json();
-        if (data && data.livestream && data.livestream.is_live) {
+        if (!res.ok) {
+            logger.warn(`⚠️ Kick Page Error for ${slug}: ${res.status}`);
+            return null;
+        }
+
+        const html = await res.text();
+
+        // Search for the Livestream data in the HTML (they usually embed it in a script tag)
+        // Usually window.channel or similar. Checking for "livestream":{...} pattern.
+        // We look for a JSON blob that contains "livestream": and "is_live":true
+
+        // Simple regex check for live status first to be efficient
+        // Pattern: "is_live":true
+        const isLiveMatch = /"is_live":true/i.test(html);
+
+        if (isLiveMatch) {
+            // If live, we try to extract details. This is "dirty" parsing but works when API fails.
+            // We'll try to find the title/game roughly.
+
+            // Extract title
+            const titleMatch = /"session_title":"(.*?)"/.exec(html);
+            const title = titleMatch ? titleMatch[1] : 'Canlı Yayın';
+
+            // Extract game (category)
+            // Often under "category":{"name":"Just Chatting"...
+            const gameMatch = /"category":{.*?"name":"(.*?)"/.exec(html);
+            const game = gameMatch ? gameMatch[1] : 'Unknown';
+
             return {
-                user_name: data.user.username,
-                game_name: data.livestream.categories?.[0]?.name || 'Unknown',
-                title: data.livestream.session_title,
-                thumbnail_url: data.livestream.thumbnail?.url,
-                viewer_count: data.livestream.viewer_count,
-                started_at: data.livestream.created_at,
-                id: data.livestream.id
+                user_name: slug,
+                game_name: game,
+                title: title,
+                thumbnail_url: null, // Hard to scrape robustly
+                viewer_count: 0, // Hard to scrape robustly
+                started_at: new Date().toISOString(), // Fallback
+                id: `scraped_${Date.now()}` // Fallback ID
             };
         }
+
         return null;
+
     } catch (e) {
-        logger.error(`❌ Kick Check Error for ${slug}:`, e.message);
+        logger.error(`❌ Kick Scrape Error for ${slug}:`, e.message);
         return null;
     }
 }
