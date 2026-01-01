@@ -1,7 +1,30 @@
 {
   "guilds": {
-    "default": {
-      "watched": []
+    "GUILD_ID_YAZILACAK": {
+      "notifyChannelId": "KANAL_ID_YAZILACAK",
+      "mentionsEnabled": true,
+      "watched": [
+        {
+          "platform": "twitch",
+          "identifier": "irmylcn"
+        },
+        {
+          "platform": "twitch",
+          "identifier": "nazaltnbass"
+        },
+        {
+          "platform": "kick",
+          "identifier": "sevolololo"
+        },
+        {
+          "platform": "kick",
+          "identifier": "nazaltinbas"
+        },
+        {
+          "platform": "kick",
+          "identifier": "irmylcn"
+        }
+      ]
     }
   },
   "streamState": {}
