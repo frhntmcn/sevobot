@@ -1,8 +1,6 @@
 const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
 const roleMessages = require('../config/roleMessages');
 const { startStreamManager } = require('./streamManager');
-const fs = require('fs');
-const path = require('path');
 
 const client = new Client({
     intents: [

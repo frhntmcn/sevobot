@@ -1,7 +1,10 @@
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
-const DB_PATH = path.join(process.cwd(), 'data', 'db.json');
+// Use /tmp directory on Vercel (read-only filesystem otherwise)
+const DATA_DIR = process.env.VERCEL ? os.tmpdir() : path.join(process.cwd(), 'data');
+const DB_PATH = path.join(DATA_DIR, 'db.json');
 
 // Default initial state
 const defaultData = {
