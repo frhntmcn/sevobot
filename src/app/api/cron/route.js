@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getAuthenticatedClient } from '../../../../../services/discordBot';
-import { runCheck } from '../../../../../services/streamManager';
-import logger from '../../../../../services/logger';
+import { getAuthenticatedClient } from '../../../../services/discordBot';
+import { runCheck } from '../../../../services/streamManager';
+import logger from '../../../../services/logger';
 
 export const dynamic = 'force-dynamic';
 
