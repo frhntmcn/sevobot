@@ -216,7 +216,7 @@ async function processStreamState(client, platform, identifier, streamData) {
         const streamId = streamData.id || `session_${Date.now()}`;
 
         if (currentState.lastStatus !== 'online') {
-            console.log(`🟢 [${platform}] ${identifier} Came ONLINE (ID: ${streamId})`);
+            logger.log(`🟢 [${platform}] ${identifier} Came ONLINE (ID: ${streamId})`);
             await broadcastNotification(client, platform, identifier, streamData);
 
             storage.updateStreamState(platform, identifier, {
@@ -229,7 +229,7 @@ async function processStreamState(client, platform, identifier, streamData) {
             if (currentState.lastStreamId === streamId) {
                 // Same stream, do nothing
             } else {
-                console.log(`🔄 [${platform}] ${identifier} New Stream Session Detected (Old: ${currentState.lastStreamId} -> New: ${streamId})`);
+                logger.log(`🔄 [${platform}] ${identifier} New Stream Session Detected (Old: ${currentState.lastStreamId} -> New: ${streamId})`);
                 await broadcastNotification(client, platform, identifier, streamData);
 
                 storage.updateStreamState(platform, identifier, {
@@ -241,7 +241,7 @@ async function processStreamState(client, platform, identifier, streamData) {
         }
     } else {
         if (currentState.lastStatus === 'online') {
-            console.log(`🔴 [${platform}] ${identifier} Went OFFLINE`);
+            logger.log(`🔴 [${platform}] ${identifier} Went OFFLINE`);
             storage.updateStreamState(platform, identifier, { lastStatus: 'offline' });
         }
     }

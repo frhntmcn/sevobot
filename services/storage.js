@@ -2,16 +2,16 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-// Use /tmp directory on Vercel (read-only filesystem otherwise)
-const DATA_DIR = process.env.VERCEL ? os.tmpdir() : path.join(process.cwd(), 'data');
+// prioritized local data over /tmp for VDS
+const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_PATH = path.join(DATA_DIR, 'db.json');
 
 // Default initial state
 const defaultData = {
     guilds: {},
-    // Dedupe cache: "platform:channelId" -> { lastStatus: 'offline', lastNotified: 0, lastStreamId: null }
     streamState: {}
 };
+
 
 class StorageService {
     constructor() {
@@ -24,26 +24,11 @@ class StorageService {
     }
 
     load() {
-        this.data = defaultData; // Default fallback
-
-        // On Vercel, data on /tmp is ephemeral. We try to seed it from the repo file.
-        const SEED_PATH = path.join(process.cwd(), 'data', 'db.json');
+        this.data = JSON.parse(JSON.stringify(defaultData));
 
         if (!fs.existsSync(DB_PATH)) {
-            if (fs.existsSync(SEED_PATH)) {
-                try {
-                    // Copy seed file to writable /tmp location
-                    const seedContent = fs.readFileSync(SEED_PATH);
-                    fs.writeFileSync(DB_PATH, seedContent);
-                    console.log(`[STORAGE] Seeded database from ${SEED_PATH} to ${DB_PATH}`);
-                } catch (err) {
-                    console.error('[STORAGE] Failed to seed database:', err);
-                }
-            } else {
-                // No seed, save default
-                this.save();
-                return;
-            }
+            this.save();
+            return;
         }
 
         try {
@@ -55,9 +40,10 @@ class StorageService {
             if (!this.data.streamState) this.data.streamState = {};
 
         } catch (error) {
-            console.error('Failed to load DB:', error);
+            console.error('[STORAGE] Failed to load DB:', error);
         }
     }
+
 
     save() {
         try {
