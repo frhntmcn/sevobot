@@ -1,6 +1,45 @@
 const storage = require('./storage');
 const logger = require('./logger');
 
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
+
+let browserInstance = null;
+let isLaunching = false;
+
+async function getBrowser() {
+    if (browserInstance && browserInstance.connected) return browserInstance;
+    if (isLaunching) {
+        await new Promise(r => setTimeout(r, 2000));
+        return getBrowser();
+    }
+
+    isLaunching = true;
+    try {
+        logger.log("🌐 Launching Stealth Browser...");
+        browserInstance = await puppeteer.launch({
+            headless: 'new',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--disable-gpu',
+                '--window-size=1280,720'
+            ]
+        });
+        logger.log("✅ Stealth Browser Ready.");
+        return browserInstance;
+    } catch (err) {
+        logger.error("❌ Failed to launch browser:", err);
+        return null;
+    } finally {
+        isLaunching = false;
+    }
+}
+
+
 // --- Helpers ---
 
 async function fetchWithTimeout(url, options = {}, timeout = 5000) {
@@ -90,34 +129,31 @@ async function checkTwitchStreams(channels) {
 // --- Kick Provider ---
 
 async function checkKickStream(slug) {
+    let page = null;
     try {
-        // Method 4: Mobile API v1 with focused headers
-        // Mobile User-Agents are sometimes treated more leniently by Cloudflare.
-        const res = await fetchWithTimeout(`https://kick.com/api/v1/channels/${slug}`, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Mobile/15E148 Safari/604.1',
-                'Accept': 'application/json',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'X-Requested-With': 'XMLHttpRequest',
-                'Referer': 'https://kick.com/',
-                'Origin': 'https://kick.com'
-            }
+        const browser = await getBrowser();
+        if (!browser) return null;
+
+        page = await browser.newPage();
+        await page.setViewport({ width: 1280, height: 720 });
+
+        // We use a longer timeout and networkidle2 to be safe
+        await page.goto(`https://kick.com/api/v1/channels/${slug}`, {
+            waitUntil: 'networkidle2',
+            timeout: 30000
         });
 
-        if (res.status === 403) {
-            // If API still 403, it's a TLS fingerprinting block.
-            logger.warn(`⚠️ Kick API Block for ${slug} (403 Mobile).`);
+        const content = await page.evaluate(() => document.body.innerText);
+        let data;
+        try {
+            data = JSON.parse(content);
+        } catch (e) {
+            if (content.includes('verify your connection') || content.includes('Cloudflare')) {
+                logger.warn(`⚠️ Kick Cloudflare active for ${slug}.`);
+            }
             return null;
         }
 
-        if (!res.ok) {
-            logger.warn(`⚠️ Kick API Error for ${slug}: ${res.status}`);
-            return null;
-        }
-
-        const data = await res.json();
-
-        // Data structure for API v1
         if (data && data.livestream && data.livestream.is_live) {
             return {
                 user_name: data.user?.username || slug,
@@ -129,14 +165,16 @@ async function checkKickStream(slug) {
                 id: data.livestream.id
             };
         }
-
         return null;
-
     } catch (e) {
-        logger.error(`❌ Kick Check Error for ${slug}:`, e.message);
+        logger.error(`❌ Kick Puppeteer Error [${slug}]:`, e.message);
+        if (e.message.includes('disconnected')) browserInstance = null;
         return null;
+    } finally {
+        if (page) await page.close().catch(() => { });
     }
 }
+
 
 // --- Main Manager ---
 
