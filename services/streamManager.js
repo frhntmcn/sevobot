@@ -91,73 +91,49 @@ async function checkTwitchStreams(channels) {
 
 async function checkKickStream(slug) {
     try {
-        // Method 3: HTML Scraping (API is blocked by CF)
-        const res = await fetchWithTimeout(`https://kick.com/${slug}`, {
+        // Method 4: Mobile API v1 with focused headers
+        // Mobile User-Agents are sometimes treated more leniently by Cloudflare.
+        const res = await fetchWithTimeout(`https://kick.com/api/v1/channels/${slug}`, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Mobile/15E148 Safari/604.1',
+                'Accept': 'application/json',
                 'Accept-Language': 'en-US,en;q=0.9',
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache',
-                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                'Sec-Ch-Ua-Mobile': '?0',
-                'Sec-Ch-Ua-Platform': '"Windows"',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'none',
-                'Sec-Fetch-User': '?1',
-                'Upgrade-Insecure-Requests': '1'
+                'X-Requested-With': 'XMLHttpRequest',
+                'Referer': 'https://kick.com/',
+                'Origin': 'https://kick.com'
             }
         });
 
         if (res.status === 403) {
-            logger.warn(`⚠️ Kick Cloudflare Block for ${slug} (403 HTML).`);
+            // If API still 403, it's a TLS fingerprinting block.
+            logger.warn(`⚠️ Kick API Block for ${slug} (403 Mobile).`);
             return null;
         }
 
         if (!res.ok) {
-            logger.warn(`⚠️ Kick Page Error for ${slug}: ${res.status}`);
+            logger.warn(`⚠️ Kick API Error for ${slug}: ${res.status}`);
             return null;
         }
 
-        const html = await res.text();
+        const data = await res.json();
 
-        // Search for the Livestream data in the HTML (they usually embed it in a script tag)
-        // Usually window.channel or similar. Checking for "livestream":{...} pattern.
-        // We look for a JSON blob that contains "livestream": and "is_live":true
-
-        // Simple regex check for live status first to be efficient
-        // Pattern: "is_live":true
-        const isLiveMatch = /"is_live":true/i.test(html);
-
-        if (isLiveMatch) {
-            // If live, we try to extract details. This is "dirty" parsing but works when API fails.
-            // We'll try to find the title/game roughly.
-
-            // Extract title
-            const titleMatch = /"session_title":"(.*?)"/.exec(html);
-            const title = titleMatch ? titleMatch[1] : 'Canlı Yayın';
-
-            // Extract game (category)
-            // Often under "category":{"name":"Just Chatting"...
-            const gameMatch = /"category":{.*?"name":"(.*?)"/.exec(html);
-            const game = gameMatch ? gameMatch[1] : 'Unknown';
-
+        // Data structure for API v1
+        if (data && data.livestream && data.livestream.is_live) {
             return {
-                user_name: slug,
-                game_name: game,
-                title: title,
-                thumbnail_url: null, // Hard to scrape robustly
-                viewer_count: 0, // Hard to scrape robustly
-                started_at: new Date().toISOString(), // Fallback
-                id: `scraped_${Date.now()}` // Fallback ID
+                user_name: data.user?.username || slug,
+                game_name: data.livestream.categories?.[0]?.name || 'Unknown',
+                title: data.livestream.session_title,
+                thumbnail_url: data.livestream.thumbnail?.url,
+                viewer_count: data.livestream.viewer_count,
+                started_at: data.livestream.created_at,
+                id: data.livestream.id
             };
         }
 
         return null;
 
     } catch (e) {
-        logger.error(`❌ Kick Scrape Error for ${slug}:`, e.message);
+        logger.error(`❌ Kick Check Error for ${slug}:`, e.message);
         return null;
     }
 }
