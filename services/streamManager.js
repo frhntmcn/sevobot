@@ -42,7 +42,7 @@ async function getBrowser() {
 
 // --- Helpers ---
 
-async function fetchWithTimeout(url, options = {}, timeout = 5000) {
+async function fetchWithTimeout(url, options = {}, timeout = 10000) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     try {
@@ -55,40 +55,50 @@ async function fetchWithTimeout(url, options = {}, timeout = 5000) {
     }
 }
 
+
 // --- Twitch Provider ---
 
 let twitchAccessToken = null;
 let twitchTokenExpiry = 0;
 
-async function getTwitchAccessToken() {
+async function getTwitchAccessToken(retries = 3) {
     const now = Date.now();
     if (twitchAccessToken && now < twitchTokenExpiry) return twitchAccessToken;
 
-    try {
-        logger.log("🔄 Requesting new Twitch Access Token...");
-        const params = new URLSearchParams({
-            client_id: process.env.TWITCH_CLIENT_ID,
-            client_secret: process.env.TWITCH_CLIENT_SECRET,
-            grant_type: 'client_credentials'
-        });
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            logger.log(`🔄 Requesting new Twitch Access Token... (Attempt ${attempt}/${retries})`);
+            const params = new URLSearchParams({
+                client_id: process.env.TWITCH_CLIENT_ID,
+                client_secret: process.env.TWITCH_CLIENT_SECRET,
+                grant_type: 'client_credentials'
+            });
 
-        const res = await fetch('https://id.twitch.tv/oauth2/token', {
-            method: 'POST',
-            body: params
-        });
+            const res = await fetch('https://id.twitch.tv/oauth2/token', {
+                method: 'POST',
+                body: params,
+                // Higher internal timeout for token request
+                signal: AbortSignal.timeout(15000)
+            });
 
-        if (!res.ok) throw new Error(`Twitch Auth Error: ${res.statusText}`);
+            if (!res.ok) throw new Error(`Twitch Auth Error: ${res.statusText}`);
 
-        const data = await res.json();
-        twitchAccessToken = data.access_token;
-        twitchTokenExpiry = now + (data.expires_in * 1000) - 60000;
-        logger.log("✅ Twitch Token Acquired.");
-        return twitchAccessToken;
-    } catch (e) {
-        logger.error("❌ Failed to get Twitch Token:", e);
-        return null;
+            const data = await res.json();
+            twitchAccessToken = data.access_token;
+            twitchTokenExpiry = now + (data.expires_in * 1000) - 60000;
+            logger.log("✅ Twitch Token Acquired.");
+            return twitchAccessToken;
+        } catch (e) {
+            logger.error(`❌ Attempt ${attempt} failed to get Twitch Token:`, e.message);
+            if (attempt === retries) return null;
+            // Wait before next attempt (exponential backoff: 2s, 4s, 8s...)
+            const delay = Math.pow(2, attempt) * 1000;
+            await new Promise(r => setTimeout(r, delay));
+        }
     }
+    return null;
 }
+
 
 async function checkTwitchStreams(channels) {
     if (!channels || channels.length === 0) return [];
