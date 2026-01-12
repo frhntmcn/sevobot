@@ -21,12 +21,16 @@ if (!fs.existsSync(TEMP_DIR)) {
 }
 
 /**
- * Launches a stealth browser to get Kick.com cookies.
+ * Sniffs the M3U8 URL by intercepting the internal API call the Kick frontend makes.
+ * This is more reliable than waiting for the video to play.
+ * @param {string} channelSlug 
+ * @returns {Promise<{m3u8: string, date: string, id: string}>}
  */
-async function getKickCookies() {
-    logger.log("VERSION: 3.0 (Final Cookie Fix)"); // Version marker
-    logger.log("🍪 [KickVOD] Launching browser to fetch cookies...");
+async function getLatestVodM3u8(channelSlug) {
+    logger.log(`VERSION: 4.0 (API Intercept)`);
+    logger.log(`🕵️ [KickVOD] Sniffing Metadata for ${channelSlug}...`);
     let browser = null;
+
     try {
         browser = await puppeteer.launch({
             headless: 'new',
@@ -44,43 +48,62 @@ async function getKickCookies() {
         const page = await browser.newPage();
         await page.setUserAgent(USER_AGENT);
 
-        logger.log("⏳ [KickVOD] Waiting for Cloudflare/Kick...");
-        // networkidle2 is usually stable enough for just loading the main page to get cookies
-        await page.goto('https://kick.com', { waitUntil: 'networkidle2', timeout: 60000 });
+        // 1. Get Channel Info to find latest video UUID
+        logger.log(`⏳ [KickVOD] Fetching channel data...`);
+        await page.goto(`https://kick.com/api/v1/channels/${channelSlug}`, {
+            waitUntil: 'domcontentloaded',
+            timeout: 60000
+        });
 
-        // Manual wait for Cloudflare
-        await new Promise(r => setTimeout(r, 5000));
+        const content = await page.evaluate(() => document.body.innerText);
+        let data;
+        try {
+            data = JSON.parse(content);
+        } catch (e) {
+            throw new Error("Failed to parse channel API JSON.");
+        }
 
-        // Get cookies
-        const cookies = await page.cookies();
+        if (!data || !data.previous_livestreams || data.previous_livestreams.length === 0) {
+            throw new Error("No previous livestreams found.");
+        }
 
-        // Strict Netscape Format
-        const netscapeCookies = cookies.map(c => {
-            const domain = c.domain;
-            const flag = domain.startsWith('.') ? 'TRUE' : 'FALSE';
-            const path = c.path || '/';
-            const secure = c.secure ? 'TRUE' : 'FALSE';
+        const latestVod = data.previous_livestreams[0];
+        const videoSlug = latestVod.video.uuid;
+        const uploadDate = new Date(latestVod.created_at).toISOString().split('T')[0].replace(/-/g, '');
+        const videoId = latestVod.id;
 
-            // Expiry must be an integer (seconds). Handle session cookies or invalid values.
-            let expiry = c.expires;
-            if (typeof expiry !== 'number' || expiry <= 0) {
-                expiry = Math.floor(Date.now() / 1000) + (86400 * 365); // 1 year from now
-            } else {
-                expiry = Math.floor(expiry);
-            }
+        logger.log(`✅ [KickVOD] Found latest VOD UUID: ${videoSlug}`);
 
-            return `${domain}\t${flag}\t${path}\t${secure}\t${expiry}\t${c.name}\t${c.value}`;
-        }).join('\n');
+        // 2. Go to Video Page and INTERCEPT the metadata API request
+        // We don't need the video to play, we just need the frontend to fetch the video data.
+        const videoUrl = `https://kick.com/video/${videoSlug}`;
+        logger.log(`running [KickVOD] Navigating to ${videoUrl} to intercept metadata...`);
 
-        const cookiePath = path.join(TEMP_DIR, `cookies_${Date.now()}.txt`);
-        fs.writeFileSync(cookiePath, '# Netscape HTTP Cookie File\n' + netscapeCookies);
+        // We set up a race: strict timeout vs found response
+        const [response] = await Promise.all([
+            page.waitForResponse(res => res.url().includes(`/api/v1/video/${videoSlug}`) && res.status() === 200, { timeout: 30000 }).catch(() => null),
+            page.goto(videoUrl, { waitUntil: 'domcontentloaded', timeout: 60000 })
+        ]);
 
-        logger.log(`✅ [KickVOD] Cookies saved to ${cookiePath} (${cookies.length} cookies)`);
-        return cookiePath;
+        if (!response) {
+            // Check fallback: sometimes fetching page is faster than listener setup (unlikely with await all)
+            // Or maybe it uses v2?
+            throw new Error("Timeout waiting for metadata API response.");
+        }
+
+        const videoData = await response.json();
+        const m3u8Url = videoData.source;
+
+        if (!m3u8Url) {
+            throw new Error("Metadata received but 'source' (m3u8) field is missing.");
+        }
+
+        logger.log(`🎯 [KickVOD] Captured M3U8 from API: ${m3u8Url}`);
+        return { m3u8: m3u8Url, date: uploadDate, id: videoId };
 
     } catch (error) {
-        logger.error(`❌ [KickVOD] Failed to get cookies: ${error.message}`);
-        return null; // Don't throw, let caller handle
+        logger.error(`❌ [KickVOD] Sniffing failed: ${error.message}`);
+        throw error;
     } finally {
         if (browser) await browser.close();
     }
@@ -95,14 +118,17 @@ async function downloadVod(channelSlug) {
     return new Promise(async (resolve, reject) => {
         logger.log(`📥 [KickVOD] Process started for ${channelSlug}...`);
 
-        // 1. Get Cookies
-        const cookieFile = await getKickCookies();
-        if (!cookieFile) {
-            logger.warn("⚠️ [KickVOD] Could not fetch cookies. Trying download without them (high chance of 403).");
+        let vodInfo;
+        try {
+            vodInfo = await getLatestVodM3u8(channelSlug);
+        } catch (err) {
+            logger.error(`❌ [KickVOD] Sniffing Error: ${err.message}`);
+            return reject(err);
         }
 
-        // Output template
-        const outputTemplate = path.join(TEMP_DIR, `${channelSlug}_%(upload_date)s_%(id)s.%(ext)s`);
+        const { m3u8, date, id } = vodInfo;
+        const fileName = `${channelSlug}_${date}_${id}.mp4`;
+        const outputPath = path.join(TEMP_DIR, fileName);
 
         // Determine Python Path
         let pythonPath = 'python';
@@ -119,45 +145,22 @@ async function downloadVod(channelSlug) {
             }
         }
 
-        // Command Construction
-        // We use the cookies file and the MATCHING user-agent.
-        let command = `${pythonPath} -m yt_dlp "https://kick.com/${channelSlug}/videos" --playlist-end 1 -o "${outputTemplate}" --format "bestvideo+bestaudio/best" --merge-output-format mp4 --user-agent "${USER_AGENT}"`;
-
-        if (cookieFile) {
-            command += ` --cookies "${cookieFile}"`;
-        }
+        // Generic yt-dlp command for generic m3u8. Bypasses Kick extractor.
+        const command = `${pythonPath} -m yt_dlp "${m3u8}" -o "${outputPath}" --user-agent "${USER_AGENT}"`;
 
         logger.log(`DEBUG: Running command: ${command}`);
 
         exec(command, (error, stdout, stderr) => {
-            // Cleanup
-            if (cookieFile && fs.existsSync(cookieFile)) fs.unlinkSync(cookieFile);
-
             if (error) {
                 logger.error(`❌ [KickVOD] Download failed: ${stderr}`);
-                // Proceed to reject, BUT check if it actually downloaded something? 
-                // Sometimes yt-dlp returns non-zero even if download worked (mostly warnings).
-                // Let's check for file existence below.
+                return reject(error);
             }
 
-            // Check for file
-            const match = stdout.match(/Destination: (.+)/);
-            if (match && match[1]) {
-                logger.log(`✅ [KickVOD] Download complete: ${match[1]}`);
-                resolve(match[1]);
+            if (fs.existsSync(outputPath)) {
+                logger.log(`✅ [KickVOD] Download complete: ${outputPath}`);
+                resolve(outputPath);
             } else {
-                // Fallback scan
-                const files = fs.readdirSync(TEMP_DIR)
-                    .filter(f => f.startsWith(channelSlug) && f.endsWith('.mp4'))
-                    .sort((a, b) => fs.statSync(path.join(TEMP_DIR, b)).mtime.getTime() - fs.statSync(path.join(TEMP_DIR, a)).mtime.getTime());
-
-                if (files.length > 0) {
-                    const foundPath = path.join(TEMP_DIR, files[0]);
-                    logger.log(`✅ [KickVOD] Found downloaded file: ${foundPath}`);
-                    resolve(foundPath);
-                } else {
-                    reject(new Error("Download finished but file not found (or 403 error)."));
-                }
+                reject(new Error("Download finished but file not found."));
             }
         });
     });
