@@ -37,7 +37,7 @@ for (const command of commands) {
 }
 console.log("Commands to Register:", commandsToRegister.map(c => c.name));
 
-client.once('ready', async () => {
+client.once('clientReady', async () => {
     console.log(`Logged in as ${client.user.tag}!`);
     console.log(`Loaded ${client.commands.size} commands.`);
 
