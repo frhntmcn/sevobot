@@ -13,6 +13,7 @@ puppeteer.use(StealthPlugin());
 const TEMP_DIR = path.join(__dirname, '../temp_vods');
 const CREDENTIALS_PATH = path.join(__dirname, '../config/service-account.json');
 const FOLDER_ID = process.env.GDRIVE_FOLDER_ID; // Optional: Set in .env
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 // Ensure temp directory exists
 if (!fs.existsSync(TEMP_DIR)) {
@@ -33,10 +34,14 @@ async function getKickCookies() {
         });
 
         const page = await browser.newPage();
-        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        await page.setUserAgent(USER_AGENT);
 
-        // Go to Kick homepage to get base cookies
-        await page.goto('https://kick.com', { waitUntil: 'networkidle2', timeout: 45000 });
+        // Go to Kick homepage to get base cookies. Wait longer to ensure CF challenge finishes.
+        logger.log("⏳ [KickVOD] Waiting for Cloudflare/Kick...");
+        await page.goto('https://kick.com', { waitUntil: 'networkidle0', timeout: 60000 });
+
+        // Small extra delay to be safe
+        await new Promise(r => setTimeout(r, 5000));
 
         // Get cookies
         const cookies = await page.cookies();
@@ -106,8 +111,8 @@ async function downloadVod(channelSlug) {
             }
         }
 
-        // Command: Use cookies file
-        const command = `${pythonPath} -m yt_dlp "https://kick.com/${channelSlug}/videos" --playlist-end 1 -o "${outputTemplate}" --format "bestvideo+bestaudio/best" --merge-output-format mp4 --cookies "${cookieFile}"`;
+        // Command: Use cookies file AND matching User Agent
+        const command = `${pythonPath} -m yt_dlp "https://kick.com/${channelSlug}/videos" --playlist-end 1 -o "${outputTemplate}" --format "bestvideo+bestaudio/best" --merge-output-format mp4 --cookies "${cookieFile}" --user-agent "${USER_AGENT}"`;
 
         logger.log(`DEBUG: Running command: ${command}`);
 
