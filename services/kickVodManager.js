@@ -30,7 +30,8 @@ async function downloadVod(channelSlug) {
         // Kick VOD URLs are usually kick.com/channel/videos/video_id
         // But yt-dlp can often parse the channel videos page.
         // Better strategy: ask yt-dlp to get the latest video from the channel.
-        const command = `python -m yt_dlp "https://kick.com/${channelSlug}/videos" --playlist-end 1 -o "${outputTemplate}" --format "bestvideo+bestaudio/best" --merge-output-format mp4`;
+        // Added --impersonate chrome to bypass Cloudflare 403 errors
+        const command = `python -m yt_dlp "https://kick.com/${channelSlug}/videos" --playlist-end 1 -o "${outputTemplate}" --format "bestvideo+bestaudio/best" --merge-output-format mp4 --impersonate chrome`;
 
         logger.log(`DEBUG: Running command: ${command}`);
 
