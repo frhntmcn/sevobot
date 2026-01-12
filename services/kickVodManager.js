@@ -77,18 +77,14 @@ async function getLatestVodM3u8(channelSlug) {
         logger.log(`✅ [KickVOD] Found latest VOD: ${latestVod.session_title} (ID: ${videoId})`);
 
         // 2. Go to Video Page and Sniff Network
-        // The master playlist usually appears in network requests.
         const videoUrl = `https://kick.com/video/${videoSlug}`;
         logger.log(`running [KickVOD] Navigating to ${videoUrl} to sniff M3U8...`);
 
         let m3u8Url = null;
 
-        // Setup request interception
         await page.setRequestInterception(true);
         page.on('request', request => {
             const url = request.url();
-            // Look for master.m3u8 or playlist.m3u8 
-            // Kick often uses: https://.../master.m3u8
             if (url.includes('.m3u8') && !url.includes('images')) {
                 if (!m3u8Url) {
                     m3u8Url = url;
@@ -100,16 +96,47 @@ async function getLatestVodM3u8(channelSlug) {
 
         await page.goto(videoUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Wait a bit for the player to load and request the stream
+        // --- INTERACTION LOGIC (Crucial for VDS) ---
+        // 1. Check for "Start Watching" (Mature Content) button
+        try {
+            const startButton = await page.waitForSelector('button.variant-action', { timeout: 5000 });
+            if (startButton) {
+                logger.log("⚠️ [KickVOD] Found 'Start Watching' button. Clicking...");
+                await startButton.click();
+            }
+        } catch (e) { /* Ignore if not found */ }
+
+        // 2. Force Video Play via DOM
+        try {
+            logger.log("▶️ [KickVOD] Attempting to force play video...");
+            await page.evaluate(() => {
+                const video = document.querySelector('video');
+                if (video) {
+                    video.muted = true; // Autoplay requires mute usually
+                    video.play();
+                } else {
+                    // Try clicking the big play button if it exists
+                    const bigPlay = document.querySelector('button[class*="vjs-big-play-button"]');
+                    if (bigPlay) bigPlay.click();
+                }
+            });
+        } catch (e) {
+            logger.warn(`⚠️ [KickVOD] Force play attempt warning: ${e.message}`);
+        }
+
+        // Wait for sniff (increased timeout)
         const startTime = Date.now();
-        while (!m3u8Url && Date.now() - startTime < 15000) {
+        while (!m3u8Url && Date.now() - startTime < 30000) {
             await new Promise(r => setTimeout(r, 1000));
         }
 
         if (!m3u8Url) {
-            // Fallback: Check if the API data had the source link?
-            // Usually not direct.
-            throw new Error("Timeout waiting for .m3u8 request.");
+            // Last ditch: check if API data had it (sometimes it does)
+            if (latestVod.video && latestVod.video.url && latestVod.video.url.includes('.m3u8')) {
+                logger.log("ℹ️ [KickVOD] Fallback: Used M3U8 from API data.");
+                return { m3u8: latestVod.video.url, date: uploadDate, id: videoId };
+            }
+            throw new Error("Timeout waiting for .m3u8 request. Video did not start.");
         }
 
         return { m3u8: m3u8Url, date: uploadDate, id: videoId };
