@@ -178,43 +178,43 @@ async function downloadVod(channelSlug) {
  */
 async function uploadToDrive(filePath) {
     if (!fs.existsSync(CREDENTIALS_PATH)) {
-        logger.error("❌ [KickVOD] Google Drive credentials not found at " + CREDENTIALS_PATH);
-        return;
+        const msg = `Google Drive credentials not found at ${CREDENTIALS_PATH}`;
+        logger.error(`❌ [KickVOD] ${msg}`);
+        throw new Error(msg); // THROW so we skip the delete step in processVod
     }
 
+    if (!FOLDER_ID) {
+        const msg = "GDRIVE_FOLDER_ID not set in environment variables.";
+        logger.error(`❌ [KickVOD] ${msg}`);
+        throw new Error(msg);
+    }
+
+    logger.log(`📤 [KickVOD] Uploading ${path.basename(filePath)} to Google Drive...`);
+
+    const auth = new google.auth.GoogleAuth({
+        keyFile: CREDENTIALS_PATH,
+        scopes: ['https://www.googleapis.com/auth/drive.file']
+    });
+
+    const drive = google.drive({ version: 'v3', auth });
+
     try {
-        const auth = new google.auth.GoogleAuth({
-            keyFile: CREDENTIALS_PATH,
-            scopes: ['https://www.googleapis.com/auth/drive.file'],
-        });
-
-        const drive = google.drive({ version: 'v3', auth });
-        const fileName = path.basename(filePath);
-
-        logger.log(`☁️ [KickVOD] Uploading ${fileName} to Google Drive...`);
-
-        const fileMetadata = {
-            name: fileName,
-            parents: FOLDER_ID ? [FOLDER_ID] : [],
-        };
-
-        const media = {
-            mimeType: 'video/mp4',
-            body: fs.createReadStream(filePath),
-        };
-
         const response = await drive.files.create({
-            resource: fileMetadata,
-            media: media,
-            fields: 'id',
+            requestBody: {
+                name: path.basename(filePath),
+                parents: [FOLDER_ID]
+            },
+            media: {
+                mimeType: 'video/mp4',
+                body: fs.createReadStream(filePath)
+            }
         });
 
-        logger.log(`✅ [KickVOD] Upload success. File ID: ${response.data.id}`);
+        logger.log(`✅ [KickVOD] Upload successful! File ID: ${response.data.id}`);
         return response.data.id;
-
-    } catch (error) {
-        logger.error(`❌ [KickVOD] Upload failed: ${error.message}`);
-        throw error;
+    } catch (uploadError) {
+        logger.error(`❌ [KickVOD] Drive Upload Error: ${uploadError.message}`);
+        throw uploadError;
     }
 }
 
