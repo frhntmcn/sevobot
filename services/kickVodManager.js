@@ -42,9 +42,21 @@ async function getKickCookies() {
         const cookies = await page.cookies();
 
         // Format as Netscape (required by yt-dlp)
-        // domain flag path secure expiration name value
+        // strict format: domain flag path secure expiration name value
         const netscapeCookies = cookies.map(c => {
-            return `${c.domain}\tTRUE\t${c.path}\t${c.secure ? 'TRUE' : 'FALSE'}\t${c.expires}\t${c.name}\t${c.value}`;
+            // 1. Domain Flag: TRUE if domain starts with '.', FALSE otherwise
+            const domainFlag = c.domain.startsWith('.') ? 'TRUE' : 'FALSE';
+
+            // 2. Expiration: Must be integer. Handle session cookies (-1 or undefined)
+            let expiration = c.expires;
+            if (!expiration || expiration < 0) {
+                // Set to 1 year in future for session cookies to ensure they are accepted
+                expiration = Math.floor(Date.now() / 1000) + 31536000;
+            } else {
+                expiration = Math.floor(expiration);
+            }
+
+            return `${c.domain}\t${domainFlag}\t${c.path}\t${c.secure ? 'TRUE' : 'FALSE'}\t${expiration}\t${c.name}\t${c.value}`;
         }).join('\n');
 
         const cookiePath = path.join(TEMP_DIR, `cookies_${Date.now()}.txt`);
