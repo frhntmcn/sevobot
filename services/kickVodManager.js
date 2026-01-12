@@ -30,18 +30,27 @@ async function getKickCookies() {
     try {
         browser = await puppeteer.launch({
             headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--disable-gpu'
+            ]
         });
 
         const page = await browser.newPage();
         await page.setUserAgent(USER_AGENT);
 
-        // Go to Kick homepage to get base cookies. Wait longer to ensure CF challenge finishes.
+        // Go to Kick homepage to get base cookies.
+        // We use 'domcontentloaded' because 'networkidle0' times out on dynamic sites like Kick.
         logger.log("⏳ [KickVOD] Waiting for Cloudflare/Kick...");
-        await page.goto('https://kick.com', { waitUntil: 'networkidle0', timeout: 60000 });
+        await page.goto('https://kick.com', { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Small extra delay to be safe
-        await new Promise(r => setTimeout(r, 5000));
+        // Manual wait to allow Cloudflare challenge to complete
+        await new Promise(r => setTimeout(r, 10000));
 
         // Get cookies
         const cookies = await page.cookies();
