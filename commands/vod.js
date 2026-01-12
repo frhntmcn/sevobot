@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 const storage = require('../services/storage');
+const { processVod } = require('../services/kickVodManager');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -21,11 +22,29 @@ module.exports = {
                             { name: 'Pasif (İndirme)', value: 'pasif' }
                         ))
         )
+        .addSubcommand(sub =>
+            sub.setName('download')
+                .setDescription('En son VOD yayını manuel olarak indir')
+                .addStringOption(option => option.setName('slug').setDescription('Kick kullanıcı adı (slug)').setRequired(true))
+        )
         .setDefaultMemberPermissions(null),
 
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
         const identifier = interaction.options.getString('slug');
+
+        if (subcommand === 'download') {
+            await interaction.reply(`⏳ **${identifier}** için son VOD indirilmeye ve yüklenmeye başlanıyor... (Bu işlem uzun sürebilir)`);
+
+            // Run in background
+            processVod(identifier).then(() => {
+                interaction.followUp({ content: `✅ **${identifier}** VOD işlemi tamamlandı!` }).catch(() => { });
+            }).catch(err => {
+                interaction.followUp({ content: `❌ **${identifier}** VOD işlemi başarısız: ${err.message}` }).catch(() => { });
+            });
+            return;
+        }
+
         const status = interaction.options.getString('durum');
         const enabled = status === 'aktif';
         const platform = subcommand; // 'kick'
