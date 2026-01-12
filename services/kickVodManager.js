@@ -4,6 +4,11 @@ const { google } = require('googleapis');
 const { exec } = require('child_process');
 const logger = require('./logger');
 
+// Puppeteer imports for Cookie Bypass
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteer.use(StealthPlugin());
+
 // Configuration
 const TEMP_DIR = path.join(__dirname, '../temp_vods');
 const CREDENTIALS_PATH = path.join(__dirname, '../config/service-account.json');
@@ -15,66 +20,108 @@ if (!fs.existsSync(TEMP_DIR)) {
 }
 
 /**
+ * Launches a stealth browser to get Kick.com cookies.
+ * This bypasses Cloudflare 403 errors by providing valid session cookies to yt-dlp.
+ */
+async function getKickCookies() {
+    logger.log("🍪 [KickVOD] Launching browser to fetch cookies...");
+    let browser = null;
+    try {
+        browser = await puppeteer.launch({
+            headless: 'new',
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+
+        const page = await browser.newPage();
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+        // Go to Kick homepage to get base cookies
+        await page.goto('https://kick.com', { waitUntil: 'networkidle2', timeout: 45000 });
+
+        // Get cookies
+        const cookies = await page.cookies();
+
+        // Format as Netscape (required by yt-dlp)
+        // domain flag path secure expiration name value
+        const netscapeCookies = cookies.map(c => {
+            return `${c.domain}\tTRUE\t${c.path}\t${c.secure ? 'TRUE' : 'FALSE'}\t${c.expires}\t${c.name}\t${c.value}`;
+        }).join('\n');
+
+        const cookiePath = path.join(TEMP_DIR, `cookies_${Date.now()}.txt`);
+        fs.writeFileSync(cookiePath, '# Netscape HTTP Cookie File\n' + netscapeCookies);
+
+        logger.log("✅ [KickVOD] Cookies acquired and saved.");
+        return cookiePath;
+
+    } catch (error) {
+        logger.error(`❌ [KickVOD] Failed to get cookies: ${error.message}`);
+        return null;
+    } finally {
+        if (browser) await browser.close();
+    }
+}
+
+/**
  * Downloads the latest VOD for a Kick channel.
  * @param {string} channelSlug 
  * @returns {Promise<string>} Path to the downloaded file
  */
 async function downloadVod(channelSlug) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         logger.log(`📥 [KickVOD] Starting download for ${channelSlug}...`);
+
+        // 1. Get Cookies
+        const cookieFile = await getKickCookies();
+        if (!cookieFile) {
+            return reject(new Error("Could not fetch cookies for Cloudflare bypass."));
+        }
 
         // Output template: channel_date_id.mp4
         const outputTemplate = path.join(TEMP_DIR, `${channelSlug}_%(upload_date)s_%(id)s.%(ext)s`);
 
-        // Command to download the latest video from the channel URL
-        // Determine Python Executable Path
-        // PM2 on Windows often fails to see PATH updates. We try to find the absolute path first.
-        let pythonPath = 'python'; // Default
+        // Determine Python Executable Path (Robust Logic)
+        let pythonPath = 'python';
         const possiblePaths = [
             'C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe',
             'C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python311\\python.exe',
-            process.env.PYTHON_PATH // Allow override via .env
+            process.env.PYTHON_PATH
         ];
 
         for (const p of possiblePaths) {
             if (p && fs.existsSync(p)) {
                 pythonPath = `"${p}"`;
-                logger.log(`DEBUG: Using explicit Python path: ${pythonPath}`);
                 break;
             }
         }
 
-        // Kick VOD URLs are usually kick.com/channel/videos/video_id
-        // But yt-dlp can often parse the channel videos page.
-        // Better strategy: ask yt-dlp to get the latest video from the channel.
-        // Added --impersonate chrome to bypass Cloudflare 403 errors
-        const command = `${pythonPath} -m yt_dlp "https://kick.com/${channelSlug}/videos" --playlist-end 1 -o "${outputTemplate}" --format "bestvideo+bestaudio/best" --merge-output-format mp4 --impersonate chrome`;
+        // Command: Use cookies file
+        const command = `${pythonPath} -m yt_dlp "https://kick.com/${channelSlug}/videos" --playlist-end 1 -o "${outputTemplate}" --format "bestvideo+bestaudio/best" --merge-output-format mp4 --cookies "${cookieFile}"`;
 
         logger.log(`DEBUG: Running command: ${command}`);
 
         exec(command, (error, stdout, stderr) => {
+            // Cleanup cookie file regardless of success
+            if (fs.existsSync(cookieFile)) fs.unlinkSync(cookieFile);
+
             if (error) {
                 logger.error(`❌ [KickVOD] Download failed: ${stderr}`);
                 return reject(error);
             }
 
-            // Find the downloaded file
-            // yt-dlp output might contain the filename, but let's look in the dir for the most recent file matching the pattern.
-            // Or parse stdout.
             const match = stdout.match(/Destination: (.+)/);
             if (match && match[1]) {
                 logger.log(`✅ [KickVOD] Download complete: ${match[1]}`);
                 resolve(match[1]);
             } else {
-                // Fallback: look for file in dir
+                // Fallback check
                 const files = fs.readdirSync(TEMP_DIR)
-                    .filter(f => f.startsWith(channelSlug))
-                    .map(f => path.join(TEMP_DIR, f))
-                    .sort((a, b) => fs.statSync(b).mtime.getTime() - fs.statSync(a).mtime.getTime());
+                    .filter(f => f.startsWith(channelSlug) && f.endsWith('.mp4'))
+                    .sort((a, b) => fs.statSync(path.join(TEMP_DIR, b)).mtime.getTime() - fs.statSync(path.join(TEMP_DIR, a)).mtime.getTime());
 
                 if (files.length > 0) {
-                    logger.log(`✅ [KickVOD] Found downloaded file: ${files[0]}`);
-                    resolve(files[0]);
+                    const foundPath = path.join(TEMP_DIR, files[0]);
+                    logger.log(`✅ [KickVOD] Found downloaded file: ${foundPath}`);
+                    resolve(foundPath);
                 } else {
                     reject(new Error("File downloaded but not found in temp dir."));
                 }
@@ -148,6 +195,7 @@ async function processVod(channelSlug) {
 
     } catch (error) {
         logger.error(`❌ [KickVOD] Process failed for ${channelSlug}: ${error.message}`);
+        throw error; // Rethrow for command handler
     }
 }
 
