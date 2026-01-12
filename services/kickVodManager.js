@@ -74,28 +74,33 @@ async function getLatestVodM3u8(channelSlug) {
 
         logger.log(`✅ [KickVOD] Found latest VOD UUID: ${videoSlug}`);
 
-        // 2. Go to Video Page and INTERCEPT the metadata API request
-        // We don't need the video to play, we just need the frontend to fetch the video data.
-        const videoUrl = `https://kick.com/video/${videoSlug}`;
-        logger.log(`running [KickVOD] Navigating to ${videoUrl} to intercept metadata...`);
+        // 2. Direct API Navigation (No more waiting for events)
+        // We act like a browser querying the API directly.
+        const videoApiUrl = `https://kick.com/api/v1/video/${videoSlug}`;
+        logger.log(`running [KickVOD] Navigating directly to API: ${videoApiUrl}`);
 
-        // We set up a race: strict timeout vs found response
-        const [response] = await Promise.all([
-            page.waitForResponse(res => res.url().includes(`/api/v1/video/${videoSlug}`) && res.status() === 200, { timeout: 30000 }).catch(() => null),
-            page.goto(videoUrl, { waitUntil: 'domcontentloaded', timeout: 60000 })
-        ]);
+        await page.goto(videoApiUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        if (!response) {
-            // Check fallback: sometimes fetching page is faster than listener setup (unlikely with await all)
-            // Or maybe it uses v2?
-            throw new Error("Timeout waiting for metadata API response.");
+        const videoApiContent = await page.evaluate(() => document.body.innerText);
+
+        let videoData;
+        try {
+            videoData = JSON.parse(videoApiContent);
+        } catch (e) {
+            // Sometimes Cloudflare returns HTML challenge page instead of JSON text
+            logger.error(`❌ [KickVOD] API returned non-JSON content. First 200 chars: ${videoApiContent.substring(0, 200)}`);
+            throw new Error("Failed to parse Video API JSON. Likely blocked by Cloudflare.");
         }
 
-        const videoData = await response.json();
         const m3u8Url = videoData.source;
 
         if (!m3u8Url) {
-            throw new Error("Metadata received but 'source' (m3u8) field is missing.");
+            logger.error(`❌ [KickVOD] 'source' not found in API response. Keys: ${Object.keys(videoData).join(', ')}`);
+            // Check nested 'livestream' object just in case
+            if (videoData.livestream && videoData.livestream.source) {
+                return { m3u8: videoData.livestream.source, date: uploadDate, id: videoId };
+            }
+            throw new Error("Metadata API response missing 'source' URL.");
         }
 
         logger.log(`🎯 [KickVOD] Captured M3U8 from API: ${m3u8Url}`);
