@@ -1,5 +1,6 @@
 const storage = require('./storage');
 const logger = require('./logger');
+const { processVod } = require('./kickVodManager');
 
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
@@ -253,6 +254,15 @@ async function processStreamState(client, platform, identifier, streamData) {
         if (currentState.lastStatus === 'online') {
             logger.log(`🔴 [${platform}] ${identifier} Went OFFLINE`);
             storage.updateStreamState(platform, identifier, { lastStatus: 'offline' });
+
+            // Trigger VOD processing for Kick
+            if (platform === 'kick') {
+                logger.log(`⏲️ [KickVOD] Scheduling VOD download for ${identifier} in 5 minutes...`);
+                // Wait 5 minutes to ensure VOD is available/processed on Kick's side
+                setTimeout(() => {
+                    processVod(identifier);
+                }, 5 * 60 * 1000);
+            }
         }
     }
 }
