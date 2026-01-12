@@ -27,11 +27,28 @@ async function downloadVod(channelSlug) {
         const outputTemplate = path.join(TEMP_DIR, `${channelSlug}_%(upload_date)s_%(id)s.%(ext)s`);
 
         // Command to download the latest video from the channel URL
+        // Determine Python Executable Path
+        // PM2 on Windows often fails to see PATH updates. We try to find the absolute path first.
+        let pythonPath = 'python'; // Default
+        const possiblePaths = [
+            'C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python312\\python.exe',
+            'C:\\Users\\Administrator\\AppData\\Local\\Programs\\Python\\Python311\\python.exe',
+            process.env.PYTHON_PATH // Allow override via .env
+        ];
+
+        for (const p of possiblePaths) {
+            if (p && fs.existsSync(p)) {
+                pythonPath = `"${p}"`;
+                logger.log(`DEBUG: Using explicit Python path: ${pythonPath}`);
+                break;
+            }
+        }
+
         // Kick VOD URLs are usually kick.com/channel/videos/video_id
         // But yt-dlp can often parse the channel videos page.
         // Better strategy: ask yt-dlp to get the latest video from the channel.
         // Added --impersonate chrome to bypass Cloudflare 403 errors
-        const command = `python -m yt_dlp "https://kick.com/${channelSlug}/videos" --playlist-end 1 -o "${outputTemplate}" --format "bestvideo+bestaudio/best" --merge-output-format mp4 --impersonate chrome`;
+        const command = `${pythonPath} -m yt_dlp "https://kick.com/${channelSlug}/videos" --playlist-end 1 -o "${outputTemplate}" --format "bestvideo+bestaudio/best" --merge-output-format mp4 --impersonate chrome`;
 
         logger.log(`DEBUG: Running command: ${command}`);
 
