@@ -257,11 +257,15 @@ async function processStreamState(client, platform, identifier, streamData) {
 
             // Trigger VOD processing for Kick
             if (platform === 'kick') {
-                logger.log(`⏲️ [KickVOD] Scheduling VOD download for ${identifier} in 5 minutes...`);
-                // Wait 5 minutes to ensure VOD is available/processed on Kick's side
-                setTimeout(() => {
-                    processVod(identifier);
-                }, 5 * 60 * 1000);
+                // Check if VOD downloading is ENABLED for this channel
+                if (storage.shouldDownloadVod('kick', identifier)) {
+                    logger.log(`⏲️ [KickVOD] Scheduling VOD download for ${identifier} in 5 minutes...`);
+                    setTimeout(() => {
+                        processVod(identifier);
+                    }, 5 * 60 * 1000);
+                } else {
+                    logger.log(`ℹ️ [KickVOD] Skipping download for ${identifier} (VOD disabled).`);
+                }
             }
         }
     }

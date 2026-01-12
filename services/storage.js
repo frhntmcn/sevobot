@@ -86,7 +86,7 @@ class StorageService {
         const exists = guild.watched.some(w => w.platform === platform && w.identifier === identifier);
 
         if (!exists) {
-            guild.watched.push({ platform, identifier });
+            guild.watched.push({ platform, identifier, vodEnabled: false });
             this.save();
             return true;
         }
@@ -107,6 +107,26 @@ class StorageService {
 
     getWatchList(guildId) {
         return this.getGuild(guildId).watched;
+    }
+
+    setVodEnabled(guildId, platform, identifier, enabled) {
+        const guild = this.getGuild(guildId);
+        const item = guild.watched.find(w => w.platform === platform && w.identifier === identifier);
+
+        if (item) {
+            item.vodEnabled = enabled;
+            this.save();
+            return true;
+        }
+        return false;
+    }
+
+    shouldDownloadVod(platform, identifier) {
+        this.ensureLoaded();
+        // Check if ANY guild has enabled VODs for this channel
+        return Object.values(this.data.guilds).some(guild =>
+            guild.watched.some(w => w.platform === platform && w.identifier === identifier && w.vodEnabled === true)
+        );
     }
 
     getAllWatchedChannels() {

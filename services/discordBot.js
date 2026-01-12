@@ -20,7 +20,8 @@ const commands = [
     require('../commands/notify-test.js'),
     require('../commands/unwatch.js'),
     require('../commands/watch.js'),
-    require('../commands/watchlist.js')
+    require('../commands/watchlist.js'),
+    require('../commands/vod.js')
 ];
 
 const commandsToRegister = [];
