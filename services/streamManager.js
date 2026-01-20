@@ -143,16 +143,22 @@ async function checkKickStream(slug) {
     let page = null;
     try {
         const browser = await getBrowser();
+        // ... existing getBrowser call
         if (!browser) return null;
 
+        logger.log(`[Kick] [${slug}] Creating new page...`);
         page = await browser.newPage();
+
+        logger.log(`[Kick] [${slug}] Setting viewport...`);
         await page.setViewport({ width: 1280, height: 720 });
 
+        logger.log(`[Kick] [${slug}] Navigating to API...`);
         // We use a longer timeout and networkidle2 to be safe
         await page.goto(`https://kick.com/api/v1/channels/${slug}`, {
             waitUntil: 'networkidle2',
             timeout: 30000
         });
+        logger.log(`[Kick] [${slug}] Navigation complete.`);
 
         const content = await page.evaluate(() => document.body.innerText);
         let data;
