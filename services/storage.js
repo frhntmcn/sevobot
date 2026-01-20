@@ -135,8 +135,19 @@ class StorageService {
         // Returns: { twitch: Set<string>, kick: Set<string> }
         const result = { twitch: new Set(), kick: new Set() };
 
-        Object.values(this.data.guilds).forEach(guild => {
-            if (!guild.notifyChannelId) return; // Ignore guilds without setup
+        Object.entries(this.data.guilds).forEach(([guildId, guild]) => {
+            if (!guild.notifyChannelId) {
+                console.log(`[STORAGE] Skipping guild ${guildId} - No notifyChannelId set.`);
+                return; // Ignore guilds without setup
+            };
+
+            if (guild.watched.length === 0) {
+                console.log(`[STORAGE] Guild ${guildId} has no watched channels.`);
+                return;
+            }
+
+            console.log(`[STORAGE] Processing guild ${guildId} - ${guild.watched.length} channels.`);
+
             guild.watched.forEach(item => {
                 if (result[item.platform]) {
                     result[item.platform].add(item.identifier);

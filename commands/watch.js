@@ -23,7 +23,15 @@ module.exports = {
         const added = storage.addWatch(interaction.guildId, platform, identifier);
 
         if (added) {
-            await interaction.reply(`✅ **${identifier}** (${platform}) izleme listesine eklendi.`);
+            let msg = `✅ **${identifier}** (${platform}) izleme listesine eklendi.`;
+
+            // Check if notify channel is set
+            const guild = storage.getGuild(interaction.guildId);
+            if (!guild.notifyChannelId) {
+                msg += `\n\n⚠️ **Dikkat:** Henüz bildirim kanalı ayarlamadınız! Bot bildirim gönderemez.\nLütfen \`/notify-channel\` komutunu kullanarak bir kanal seçin.`;
+            }
+
+            await interaction.reply(msg);
         } else {
             await interaction.reply({ content: `⚠️ **${identifier}** zaten listede ekli.`, ephemeral: true });
         }
