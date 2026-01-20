@@ -3,7 +3,7 @@ const path = require('path');
 const os = require('os');
 
 // prioritized local data over /tmp for VDS
-const DATA_DIR = path.join(process.cwd(), 'data');
+const DATA_DIR = path.join(__dirname, '..', 'data');
 const DB_PATH = path.join(DATA_DIR, 'db.json');
 
 // Default initial state
