@@ -1,0 +1,43 @@
+{
+  "channelName": "sevolololo",
+  "pusher": {
+    "appKey": "32cbd69e4b950bf97679",
+    "cluster": "us2"
+  },
+  "timers": [
+    {
+      "id": "timer_2",
+      "enabled": false,
+      "intervalMinutes": 30,
+      "message": "🌐 Web sitemizi ziyaret edin: https://sevo.bot"
+    },
+    {
+      "id": "timer_1772649215559",
+      "enabled": false,
+      "intervalMinutes": 1,
+      "message": "KICK TEST MESAJ"
+    },
+    {
+      "id": "timer_1772649321954",
+      "enabled": true,
+      "intervalMinutes": 30,
+      "message": "Destek olmak için; https://donate.bynogame.com/sevolololo"
+    },
+    {
+      "id": "timer_1772649326180",
+      "enabled": true,
+      "intervalMinutes": 15,
+      "message": "📢 Discord sunucumuza katıl! https://discord.gg/zsfEVUc25p"
+    }
+  ],
+  "commands": {
+    "!komutlar": "📋 Komutlar: !dc, !donate, !insta, !motivasyon, !spotify, !yazitura, !yaş",
+    "!donate": "https://donate.bynogame.com/sevolololo",
+    "!dc": "https://discord.com/invite/zsfEVUc25p",
+    "!motivasyon": "$(urlfetch https://sevobot.vercel.app/api/quote?bot=true)",
+    "!yazitura": "$(urlfetch https://sevobot.vercel.app/api/toss?bot=true)",
+    "!spotify": "https://open.spotify.com/user/juavdfww4c1okutzhdch5qlai?si=8c46b7e8438846f7",
+    "!insta": "https://www.instagram.com/sevolololo/",
+    "!yaş": "Șu anki multiplayer sunucusunda 26 senedir aktifim. Pingim biraz yüksek ama oyun devam ediyor"
+  }
+}

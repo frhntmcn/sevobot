@@ -1,44 +1,15 @@
 const storage = require('./storage');
 const logger = require('./logger');
 const { processVod } = require('./kickVodManager');
-
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(StealthPlugin());
+const puppeteerHelper = require('./puppeteerHelper');
 
 let browserInstance = null;
-let isLaunching = false;
 
 async function getBrowser() {
-    if (browserInstance && browserInstance.connected) return browserInstance;
-    if (isLaunching) {
-        await new Promise(r => setTimeout(r, 2000));
-        return getBrowser();
-    }
-
-    isLaunching = true;
-    try {
-        logger.log("🌐 Launching Stealth Browser...");
-        browserInstance = await puppeteer.launch({
-            headless: 'new',
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--disable-gpu',
-                '--window-size=1280,720'
-            ]
-        });
-        logger.log("✅ Stealth Browser Ready.");
-        return browserInstance;
-    } catch (err) {
-        logger.error("❌ Failed to launch browser:", err);
-        return null;
-    } finally {
-        isLaunching = false;
-    }
+    browserInstance = await puppeteerHelper.getBrowser();
+    return browserInstance;
 }
+
 
 
 // --- Helpers ---
@@ -142,18 +113,11 @@ async function checkTwitchStreams(channels) {
 async function checkKickStream(slug) {
     let page = null;
     try {
-        const browser = await getBrowser();
-        // ... existing getBrowser call
-        if (!browser) return null;
-
-        logger.log(`[Kick] [${slug}] Creating new page...`);
-        page = await browser.newPage();
-
-        logger.log(`[Kick] [${slug}] Setting viewport...`);
-        await page.setViewport({ width: 1280, height: 720 });
+        const result = await puppeteerHelper.createPage();
+        if (!result) return null;
+        page = result.page;
 
         logger.log(`[Kick] [${slug}] Navigating to API...`);
-        // We use a longer timeout and networkidle2 to be safe
         await page.goto(`https://kick.com/api/v1/channels/${slug}`, {
             waitUntil: 'networkidle2',
             timeout: 30000
@@ -287,50 +251,71 @@ async function broadcastNotification(client, platform, identifier, info) {
         const isWatching = config.watched.some(w => w.platform === platform && w.identifier === identifier);
         if (!isWatching) continue;
 
+        let targetChannel = null;
+        let isDM = false;
+
         const guild = client.guilds.cache.get(guildId);
-        if (!guild) {
-            logger.warn(`⚠️ Guild ${guildId} not found in cache.`);
-            continue;
+        if (guild) {
+            targetChannel = guild.channels.cache.get(config.notifyChannelId);
+            if (!targetChannel) {
+                logger.warn(`⚠️ Notify channel ${config.notifyChannelId} missing for guild ${guild.name}`);
+                continue;
+            }
+
+            const permissions = targetChannel.permissionsFor(guild.members.me);
+            if (!permissions || !permissions.has('SendMessages') || !permissions.has('ViewChannel') || !permissions.has('ReadMessageHistory')) {
+                logger.error(`❌ Missing permissions (Send/View/ReadHistory) in ${targetChannel.name} (${guild.name})`);
+                continue;
+            }
+        } else {
+            // Might be a DM
+            try {
+                const user = await client.users.fetch(guildId);
+                targetChannel = user;
+                isDM = true;
+            } catch (error) {
+                logger.warn(`⚠️ Could not find guild or user for ID: ${guildId}`);
+                continue;
+            }
         }
 
-        const channel = guild.channels.cache.get(config.notifyChannelId);
-        if (!channel) {
-            logger.warn(`⚠️ Notify channel ${config.notifyChannelId} missing for guild ${guild.name}`);
-            continue;
-        }
-
-        const permissions = channel.permissionsFor(guild.members.me);
-        if (!permissions.has('SendMessages') || !permissions.has('ViewChannel') || !permissions.has('ReadMessageHistory')) {
-            logger.error(`❌ Missing permissions (Send/View/ReadHistory) in ${channel.name} (${guild.name})`);
-            continue;
-        }
 
         // --- STATELESS DEDUPLICATION ---
         // Vercel resets memory, so we check Discord history to see if we already notified.
         try {
-            const messages = await channel.messages.fetch({ limit: 20 });
-            const streamUrl = platform === 'twitch' ? `twitch.tv/${identifier}` : `kick.com/${identifier}`;
-            const streamStart = new Date(info.started_at).getTime();
+            // Using dm channel or regular channel
+            let channelFetchTarget = targetChannel;
+            if (isDM && !targetChannel.dmChannel) {
+                channelFetchTarget = await targetChannel.createDM();
+            } else if (isDM) {
+                channelFetchTarget = targetChannel.dmChannel;
+            }
 
-            const alreadyNotified = messages.some(msg => {
-                // Check if message contains the streamer link
-                if (!msg.content.toLowerCase().includes(streamUrl.toLowerCase())) return false;
+            if (channelFetchTarget && channelFetchTarget.messages) {
+                const messages = await channelFetchTarget.messages.fetch({ limit: 20 });
+                const streamUrl = platform === 'twitch' ? `twitch.tv/${identifier}` : `kick.com/${identifier}`;
+                const streamStart = new Date(info.started_at).getTime();
 
-                // If message is from THIS bot
-                if (msg.author.id !== client.user.id) return false;
+                const alreadyNotified = messages.some(msg => {
+                    // Check if message contains the streamer link
+                    if (!msg.content.toLowerCase().includes(streamUrl.toLowerCase())) return false;
 
-                // CRITICAL: If message was sent AFTER the stream started, it's a valid notification.
-                // We don't want to send another one.
-                return msg.createdTimestamp > streamStart;
-            });
+                    // If message is from THIS bot
+                    if (msg.author.id !== client.user.id) return false;
 
-            if (alreadyNotified) {
-                logger.log(`⏭️ Skipping ${identifier}: Notification already exists in #${channel.name}.`);
-                continue;
+                    // CRITICAL: If message was sent AFTER the stream started, it's a valid notification.
+                    // We don't want to send another one.
+                    return msg.createdTimestamp > streamStart;
+                });
+
+                if (alreadyNotified) {
+                    logger.log(`⏭️ Skipping ${identifier}: Notification already exists for ${isDM ? 'User ' + targetChannel.tag : '#' + targetChannel.name}.`);
+                    continue;
+                }
             }
 
         } catch (err) {
-            logger.error(`⚠️ Failed to check message history in ${channel.name}:`, err);
+            logger.error(`⚠️ Failed to check message history for target ${isDM ? targetChannel.tag : targetChannel.name}:`, err);
             // On error, we proceed safely? Or skip to avoid spam? 
             // Better to skip if history fails to avoid potential spam loop.
             continue;
@@ -338,8 +323,9 @@ async function broadcastNotification(client, platform, identifier, info) {
         // -------------------------------
 
         let mentionText = '';
-        if (config.mentionsEnabled) {
-            if (permissions.has('MentionEveryone')) {
+        if (!isDM && config.mentionsEnabled) {
+            const permissions = targetChannel.permissionsFor(guild.members.me);
+            if (permissions && permissions.has('MentionEveryone')) {
                 mentionText = '@everyone ';
             } else {
                 logger.warn(`⚠️ Missing 'Mention Everyone' permission in guild: ${guild.name}`);
@@ -350,13 +336,13 @@ async function broadcastNotification(client, platform, identifier, info) {
         const msg = `${mentionText}🔴 ${platform.charAt(0).toUpperCase() + platform.slice(1)} | **${info.user_name}** yayında! ${url}\n> **${info.title}**\n> 🎮 ${info.game_name}`;
 
         try {
-            await channel.send({
+            await targetChannel.send({
                 content: msg,
-                allowedMentions: { parse: config.mentionsEnabled ? ['everyone'] : [] }
+                allowedMentions: { parse: (!isDM && config.mentionsEnabled) ? ['everyone'] : [] }
             });
-            logger.log(`✅ Notification sent to ${guild.name} (#${channel.name})`);
+            logger.log(`✅ Notification sent to ${isDM ? 'User ' + targetChannel.tag : guild.name + ' (#' + targetChannel.name + ')'}`);
         } catch (err) {
-            logger.error(`❌ Failed to send notification to ${guild.name}:`, err);
+            logger.error(`❌ Failed to send notification to ${isDM ? 'User ' + targetChannel.tag : guild.name}:`, err);
         }
     }
 }

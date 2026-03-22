@@ -7,8 +7,8 @@ module.exports = {
         .setDescription('Bu sunucu için bildirim kanalını ayarlar.')
         .addChannelOption(option =>
             option.setName('channel')
-                .setDescription('Bildirimlerin gideceği kanal')
-                .setRequired(true))
+                .setDescription('Bildirimlerin gideceği kanal (DM için boş bırakın)')
+                .setRequired(false))
         .addBooleanOption(option =>
             option.setName('everyone')
                 .setDescription('@everyone etiketi atılsın mı?')
@@ -16,21 +16,37 @@ module.exports = {
         .setDefaultMemberPermissions(null),
 
     async execute(interaction) {
-        const channel = interaction.options.getChannel('channel');
-        const mentionEveryone = interaction.options.getBoolean('everyone') || false;
+        let channelId = null;
+        let mentionEveryone = false;
+        const isDM = !interaction.guildId;
 
-        // Validasyon
-        if (!channel.isTextBased()) {
-            return interaction.reply({ content: 'Lütfen bir metin kanalı seçin.', ephemeral: true });
+        if (!isDM) {
+            const channel = interaction.options.getChannel('channel');
+            mentionEveryone = interaction.options.getBoolean('everyone') || false;
+
+            if (!channel.isTextBased()) {
+                return interaction.reply({ content: 'Lütfen bir metin kanalı seçin.', ephemeral: true });
+            }
+            channelId = channel.id;
+        } else {
+            // For DMs, user ID is the channel
+            channelId = interaction.user.id;
         }
 
-        const guild = storage.getGuild(interaction.guildId);
-        guild.notifyChannelId = channel.id;
+        const guildId = isDM ? interaction.user.id : interaction.guildId;
+        const guild = storage.getGuild(guildId);
+        guild.notifyChannelId = channelId;
         guild.mentionsEnabled = mentionEveryone;
         storage.save();
 
-        await interaction.reply({
-            content: `✅ Bildirim kanalı ${channel} olarak ayarlandı.\n📢 @everyone etiketi: **${mentionEveryone ? 'AÇIK' : 'KAPALI'}**`
-        });
+        if (isDM) {
+            await interaction.reply({
+                content: `✅ Bildirimler artık bu özel mesaja (DM) gönderilecek.`
+            });
+        } else {
+            await interaction.reply({
+                content: `✅ Bildirim kanalı <#${channelId}> olarak ayarlandı.\n📢 @everyone etiketi: **${mentionEveryone ? 'AÇIK' : 'KAPALI'}**`
+            });
+        }
     },
 };

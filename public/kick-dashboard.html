@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kick Chat Yönetim Paneli</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #16161f;
+            --bg-input: #1c1c28;
+            --bg-hover: #1f1f2e;
+            --border: #2a2a3a;
+            --border-focus: #53e04d;
+            --accent: #53e04d;
+            --accent-hover: #45c540;
+            --accent-glow: rgba(83, 224, 77, 0.15);
+            --danger: #f04848;
+            --danger-hover: #d43d3d;
+            --danger-glow: rgba(240, 72, 72, 0.15);
+            --warning: #f0a030;
+            --text-primary: #e8e8f0;
+            --text-secondary: #8888a0;
+            --text-muted: #555570;
+            --radius: 12px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* === HEADER === */
+        .header {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, #0d1a0d 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 24px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(16px);
+        }
+
+        .header-inner {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--accent), #2ca82a);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 800;
+            color: #000;
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .header h1 span {
+            color: var(--accent);
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-badge.connected {
+            background: var(--accent-glow);
+            color: var(--accent);
+            border: 1px solid rgba(83, 224, 77, 0.3);
+        }
+
+        .status-badge.disconnected {
+            background: var(--danger-glow);
+            color: var(--danger);
+            border: 1px solid rgba(240, 72, 72, 0.3);
+        }
+
+        .status-badge.loading {
+            background: rgba(240, 160, 48, 0.12);
+            color: var(--warning);
+            border: 1px solid rgba(240, 160, 48, 0.3);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.4;
+            }
+        }
+
+        /* === MAIN LAYOUT === */
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 32px 24px 80px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        /* === CARDS === */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .card-icon.commands {
+            background: rgba(99, 132, 255, 0.12);
+        }
+
+        .card-icon.timers {
+            background: rgba(240, 160, 48, 0.12);
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.2px;
+        }
+
+        .card-subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        /* === FORM ROW === */
+        .form-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .form-group.small {
+            flex: 0 0 160px;
+        }
+
+        .form-group.tiny {
+            flex: 0 0 100px;
+        }
+
+        .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input,
+        textarea,
+        select {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            padding: 10px 14px;
+            transition: border-color var(--transition), box-shadow var(--transition);
+            width: 100%;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 44px;
+        }
+
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238888a0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+        }
+
+        /* === BUTTONS === */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border-radius: var(--radius-sm);
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all var(--transition);
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 0 24px rgba(83, 224, 77, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid rgba(240, 72, 72, 0.3);
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-glow);
+            border-color: var(--danger);
+        }
+
+        .btn-toggle {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 6px;
+        }
+
+        .btn-toggle.active {
+            background: var(--accent-glow);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* === LIST ITEMS === */
+        .item-list {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .item {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            transition: all var(--transition);
+        }
+
+        .item:hover {
+            border-color: rgba(83, 224, 77, 0.2);
+            background: var(--bg-hover);
+        }
+
+        .item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .item-cmd {
+            font-weight: 700;
+            font-size: 14px;
+            color: var(--accent);
+            display: inline-block;
+            background: var(--accent-glow);
+            padding: 2px 10px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+
+        .item-response {
+            font-size: 13px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .item-timer-msg {
+            font-size: 13px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 4px;
+        }
+
+        .item-timer-interval {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--warning);
+            background: rgba(240, 160, 48, 0.1);
+            padding: 2px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        /* === EMPTY STATE === */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .empty-state .icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        /* === TOAST === */
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.success {
+            border-left: 3px solid var(--accent);
+        }
+
+        .toast.error {
+            border-left: 3px solid var(--danger);
+        }
+
+        @keyframes toastIn {
+            from {
+                transform: translateX(100px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes toastOut {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+        }
+
+        /* === CUSTOM INPUT VISIBILITY === */
+        .custom-interval-input {
+            display: none;
+        }
+
+        .custom-interval-input.visible {
+            display: block;
+        }
+
+        /* === SEPARATOR === */
+        .separator {
+            height: 1px;
+            background: var(--border);
+            margin: 20px 0;
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 640px) {
+            .form-row {
+                flex-direction: column;
+            }
+
+            .form-group.small,
+            .form-group.tiny {
+                flex: 1;
+            }
+
+            .header-inner {
+                flex-direction: column;
+                gap: 12px;
+            }
+        }
+
+        /* === KOMUTLAR NOTE === */
+        .auto-note {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: rgba(99, 132, 255, 0.06);
+            border: 1px solid rgba(99, 132, 255, 0.15);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .auto-note strong {
+            color: var(--text-primary);
+        }
+
+        /* === LEADERBOARD === */
+        .card-icon.stats {
+            background: rgba(168, 85, 247, 0.12);
+        }
+
+        .stats-summary {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 14px 18px;
+            text-align: center;
+        }
+
+        .stat-box .stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            color: var(--text-primary);
+        }
+
+        .stat-box .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        .leaderboard {
+            max-height: 420px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .leaderboard::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .leaderboard::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .lb-row {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: all var(--transition);
+        }
+
+        .lb-row:hover {
+            background: var(--bg-hover);
+            border-color: rgba(168, 85, 247, 0.2);
+        }
+
+        .lb-rank {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 800;
+            flex-shrink: 0;
+            background: var(--bg-hover);
+            color: var(--text-secondary);
+        }
+
+        .lb-rank.gold {
+            background: rgba(255, 215, 0, 0.15);
+            color: #ffd700;
+        }
+
+        .lb-rank.silver {
+            background: rgba(192, 192, 192, 0.15);
+            color: #c0c0c0;
+        }
+
+        .lb-rank.bronze {
+            background: rgba(205, 127, 50, 0.15);
+            color: #cd7f32;
+        }
+
+        .lb-name {
+            flex: 1;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .lb-count {
+            font-size: 14px;
+            font-weight: 700;
+            color: rgba(168, 85, 247, 1);
+            background: rgba(168, 85, 247, 0.1);
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .btn-reset {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            padding: 4px 10px;
+            font-size: 11px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            transition: all var(--transition);
+        }
+
+        .btn-reset:hover {
+            color: var(--danger);
+            border-color: rgba(240, 72, 72, 0.3);
+            background: var(--danger-glow);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-inner">
+            <div class="header-left">
+                <div class="logo">K</div>
+                <div>
+                    <h1>Kick <span>Chat</span> Panel</h1>
+                </div>
+            </div>
+            <div id="statusBadge" class="status-badge loading">
+                <div class="status-dot"></div>
+                <span>Yükleniyor...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="container">
+
+        <!-- COMMANDS -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <div class="card-icon commands">⚡</div>
+                    <div>
+                        <div class="card-title">Komutlar</div>
+                        <div class="card-subtitle">Kick chatinde yazıldığında otomatik yanıt verecek komutlar</div>
+                    </div>
+                </div>
+                <span id="cmdCount" style="font-size:12px; color:var(--text-muted);">0 komut</span>
+            </div>
+            <div class="card-body">
+                <div class="auto-note">
+                    ℹ️ <span>Eklenen tüm komutlar otomatik olarak <strong>!komutlar</strong> yanıtına eklenir.</span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group small">
+                        <label class="form-label">Komut</label>
+                        <input type="text" id="cmdName" placeholder="!sosyal" maxlength="30">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Yanıt Mesajı</label>
+                        <input type="text" id="cmdResponse" placeholder="Botun göndereceği yanıt mesajı...">
+                    </div>
+                    <button class="btn btn-primary" id="btnCommandAdd" onclick="addCommand()">Ekle</button>
+                </div>
+
+                <div id="commandList" class="item-list">
+                    <div class="empty-state">
+                        <div class="icon">⚡</div>
+                        <div>Henüz komut eklenmedi</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TIMERS -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <div class="card-icon timers">⏰</div>
+                    <div>
+                        <div class="card-title">Zamanlayıcılar</div>
+                        <div class="card-subtitle">Belirli aralıklarla otomatik gönderilecek duyuru mesajları</div>
+                    </div>
+                </div>
+                <span id="timerCount" style="font-size:12px; color:var(--text-muted);">0 timer</span>
+            </div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Mesaj</label>
+                        <input type="text" id="timerMessage" placeholder="Otomatik gönderilecek mesaj...">
+                    </div>
+                    <div class="form-group small">
+                        <label class="form-label">Aralık</label>
+                        <select id="timerInterval" onchange="handleIntervalChange()">
+                            <option value="5">5 dakika</option>
+                            <option value="10">10 dakika</option>
+                            <option value="15" selected>15 dakika</option>
+                            <option value="30">30 dakika</option>
+                            <option value="custom">Özel...</option>
+                        </select>
+                    </div>
+                    <div class="form-group tiny custom-interval-input" id="customIntervalGroup">
+                        <label class="form-label">Dakika</label>
+                        <input type="number" id="customInterval" placeholder="45" min="1" max="1440">
+                    </div>
+                    <button class="btn btn-primary" id="btnTimerAdd" onclick="addTimer()">Ekle</button>
+                </div>
+
+                <div id="timerList" class="item-list">
+                    <div class="empty-state">
+                        <div class="icon">⏰</div>
+                        <div>Henüz zamanlayıcı eklenmedi</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHAT ANALYTICS -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-left">
+                    <div class="card-icon stats">📊</div>
+                    <div>
+                        <div class="card-title">Sohbet Analizi</div>
+                        <div class="card-subtitle">Kick chatinde kim kaç mesaj yazdı — canlı takip</div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span id="statsCount" style="font-size:12px; color:var(--text-muted);">0 kullanıcı</span>
+                    <button class="btn-reset" onclick="resetStats()" title="İstatistikleri sıfırla">Sıfırla</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="stats-summary">
+                    <div class="stat-box">
+                        <div class="stat-value" id="totalUsers">0</div>
+                        <div class="stat-label">Kullanıcı</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value" id="totalMessages">0</div>
+                        <div class="stat-label">Toplam Mesaj</div>
+                    </div>
+                </div>
+
+                <div id="leaderboard" class="leaderboard">
+                    <div class="empty-state">
+                        <div class="icon">📊</div>
+                        <div>Henüz veri yok — sohbet başladığında güncellenecek</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOASTS -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // ============================================================
+        // STATE
+        // ============================================================
+        let config = {
+            channelName: '',
+            pusher: { appKey: '', cluster: '' },
+            timers: [],
+            commands: {}
+        };
+        let status = null;
+        let editingCommandId = null;
+        let editingTimerId = null;
+        const API_URL = '/api/kick/config';
+
+        // ============================================================
+        // LOAD
+        // ============================================================
+        async function loadConfig() {
+            try {
+                const res = await fetch(API_URL);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                config = data.config || config;
+                status = data.status || null;
+                renderAll();
+                updateStatus();
+            } catch (err) {
+                console.error('Load error:', err);
+                showToast('Config yüklenemedi: ' + err.message, 'error');
+                setStatus('disconnected', 'Bağlantı Hatası');
+            }
+        }
+
+        // ============================================================
+        // SAVE
+        // ============================================================
+        async function saveConfig() {
+            try {
+                // Auto-generate !komutlar response
+                regenerateKomutlar();
+
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        commands: config.commands,
+                        timers: config.timers
+                    })
+                });
+
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                showToast('Ayarlar kaydedildi ✓', 'success');
+            } catch (err) {
+                console.error('Save error:', err);
+                showToast('Kaydetme hatası: ' + err.message, 'error');
+            }
+        }
+
+        // ============================================================
+        // AUTO-GENERATE !komutlar
+        // ============================================================
+        function regenerateKomutlar() {
+            const cmdNames = Object.keys(config.commands)
+                .filter(c => c.toLowerCase() !== '!komutlar')
+                .sort();
+
+            if (cmdNames.length > 0) {
+                config.commands['!komutlar'] = '📋 Komutlar: ' + cmdNames.join(', ');
+            } else {
+                config.commands['!komutlar'] = '📋 Henüz komut eklenmedi.';
+            }
+        }
+
+        // ============================================================
+        // COMMANDS
+        // ============================================================
+        function addCommand() {
+            let name = document.getElementById('cmdName').value.trim();
+            const response = document.getElementById('cmdResponse').value.trim();
+
+            if (!name || !response) {
+                showToast('Komut adı ve yanıt mesajı gerekli', 'error');
+                return;
+            }
+
+            // Ensure ! prefix
+            if (!name.startsWith('!')) name = '!' + name;
+
+            // Prevent editing !komutlar manually
+            if (name.toLowerCase() === '!komutlar') {
+                showToast('!komutlar otomatik oluşturulur, manuel düzenlenemez', 'error');
+                return;
+            }
+
+            // Remove old key if renaming during edit
+            if (editingCommandId && editingCommandId !== name && editingCommandId !== '!komutlar') {
+                delete config.commands[editingCommandId];
+            }
+
+            config.commands[name] = response;
+
+            document.getElementById('cmdName').value = '';
+            document.getElementById('cmdResponse').value = '';
+
+            editingCommandId = null;
+            document.getElementById('btnCommandAdd').textContent = 'Ekle';
+
+            renderCommands();
+            saveConfig();
+        }
+
+        function editCommand(name) {
+            if (name.toLowerCase() === '!komutlar') return;
+
+            document.getElementById('cmdName').value = name;
+            document.getElementById('cmdResponse').value = config.commands[name];
+
+            editingCommandId = name;
+            document.getElementById('btnCommandAdd').textContent = 'Güncelle';
+
+            document.getElementById('cmdName').focus();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteCommand(name) {
+            if (name.toLowerCase() === '!komutlar') return;
+            delete config.commands[name];
+            renderCommands();
+            saveConfig();
+        }
+
+        function renderCommands() {
+            const list = document.getElementById('commandList');
+            const entries = Object.entries(config.commands || {}).sort((a, b) => a[0].localeCompare(b[0]));
+
+            // Count excluding !komutlar
+            const userCmdCount = entries.filter(([k]) => k.toLowerCase() !== '!komutlar').length;
+            document.getElementById('cmdCount').textContent = `${userCmdCount} komut`;
+
+            if (entries.length === 0) {
+                list.innerHTML = '<div class="empty-state"><div class="icon">⚡</div><div>Henüz komut eklenmedi</div></div>';
+                return;
+            }
+
+            list.innerHTML = entries.map(([cmd, resp]) => {
+                const isAuto = cmd.toLowerCase() === '!komutlar';
+                return `
+                    <div class="item" style="${isAuto ? 'opacity: 0.7;' : ''}">
+                        <div class="item-info">
+                            <span class="item-cmd">${escapeHtml(cmd)}</span>
+                            ${isAuto ? '<span style="font-size:10px; color:var(--text-muted); margin-left:8px;">OTO</span>' : ''}
+                            <div class="item-response">${escapeHtml(resp)}</div>
+                        </div>
+                        <div class="item-actions">
+                            ${isAuto ? '' : `
+                                <button class="btn btn-toggle" onclick="editCommand('${escapeAttr(cmd)}')">Düzenle</button>
+                                <button class="btn btn-danger" onclick="deleteCommand('${escapeAttr(cmd)}')">Sil</button>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ============================================================
+        // TIMERS
+        // ============================================================
+        function handleIntervalChange() {
+            const select = document.getElementById('timerInterval');
+            const customGroup = document.getElementById('customIntervalGroup');
+
+            if (select.value === 'custom') {
+                customGroup.classList.add('visible');
+                document.getElementById('customInterval').focus();
+            } else {
+                customGroup.classList.remove('visible');
+            }
+        }
+
+        function addTimer() {
+            const message = document.getElementById('timerMessage').value.trim();
+            const selectVal = document.getElementById('timerInterval').value;
+            let interval;
+
+            if (selectVal === 'custom') {
+                const customVal = parseInt(document.getElementById('customInterval').value);
+                if (!customVal || customVal < 1) {
+                    showToast('Geçerli bir dakika değeri girin (min: 1)', 'error');
+                    return;
+                }
+                interval = customVal;
+            } else {
+                interval = parseInt(selectVal);
+            }
+
+            if (!message) {
+                showToast('Mesaj alanı boş olamaz', 'error');
+                return;
+            }
+
+            if (editingTimerId) {
+                const timer = config.timers.find(t => t.id === editingTimerId);
+                if (timer) {
+                    timer.message = message;
+                    timer.intervalMinutes = interval;
+                }
+            } else {
+                const id = 'timer_' + Date.now();
+                if (!config.timers) config.timers = [];
+
+                config.timers.push({
+                    id: id,
+                    enabled: true,
+                    intervalMinutes: interval,
+                    message: message
+                });
+            }
+
+            document.getElementById('timerMessage').value = '';
+            document.getElementById('timerInterval').value = '15';
+            document.getElementById('customIntervalGroup').classList.remove('visible');
+
+            editingTimerId = null;
+            document.getElementById('btnTimerAdd').textContent = 'Ekle';
+
+            renderTimers();
+            saveConfig();
+        }
+
+        function editTimer(id) {
+            const timer = config.timers.find(t => t.id === id);
+            if (!timer) return;
+
+            document.getElementById('timerMessage').value = timer.message;
+
+            const select = document.getElementById('timerInterval');
+            const customGroup = document.getElementById('customIntervalGroup');
+
+            const standardOptions = ['5', '10', '15', '30'];
+            if (standardOptions.includes(timer.intervalMinutes.toString())) {
+                select.value = timer.intervalMinutes.toString();
+                customGroup.classList.remove('visible');
+            } else {
+                select.value = 'custom';
+                document.getElementById('customInterval').value = timer.intervalMinutes;
+                customGroup.classList.add('visible');
+            }
+
+            editingTimerId = id;
+            document.getElementById('btnTimerAdd').textContent = 'Güncelle';
+
+            document.getElementById('timerMessage').focus();
+        }
+
+        function deleteTimer(id) {
+            config.timers = config.timers.filter(t => t.id !== id);
+            renderTimers();
+            saveConfig();
+        }
+
+        function toggleTimer(id) {
+            const timer = config.timers.find(t => t.id === id);
+            if (timer) {
+                timer.enabled = !timer.enabled;
+                renderTimers();
+                saveConfig();
+            }
+        }
+
+        function renderTimers() {
+            const list = document.getElementById('timerList');
+            const timers = config.timers || [];
+
+            document.getElementById('timerCount').textContent = `${timers.length} timer`;
+
+            if (timers.length === 0) {
+                list.innerHTML = '<div class="empty-state"><div class="icon">⏰</div><div>Henüz zamanlayıcı eklenmedi</div></div>';
+                return;
+            }
+
+            list.innerHTML = timers.map(timer => `
+                <div class="item" style="${!timer.enabled ? 'opacity:0.5;' : ''}">
+                    <div class="item-info">
+                        <span class="item-timer-interval">⏰ ${timer.intervalMinutes} dk</span>
+                        <div class="item-timer-msg">${escapeHtml(timer.message)}</div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-toggle ${timer.enabled ? 'active' : ''}" onclick="toggleTimer('${timer.id}')">
+                            ${timer.enabled ? 'Aktif' : 'Pasif'}
+                        </button>
+                        <button class="btn btn-toggle" onclick="editTimer('${timer.id}')">Düzenle</button>
+                        <button class="btn btn-danger" onclick="deleteTimer('${timer.id}')">Sil</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ============================================================
+        // STATUS
+        // ============================================================
+        function updateStatus() {
+            if (!status) {
+                setStatus('disconnected', 'Bağlı Değil');
+                return;
+            }
+
+            if (status.connected) {
+                setStatus('connected', `Bağlı — ${config.channelName}`);
+            } else if (status.initialized) {
+                setStatus('loading', `${status.connectionState}`);
+            } else {
+                setStatus('disconnected', 'Başlatılmadı');
+            }
+        }
+
+        function setStatus(type, text) {
+            const badge = document.getElementById('statusBadge');
+            badge.className = 'status-badge ' + type;
+            badge.innerHTML = `<div class="status-dot"></div><span>${text}</span>`;
+        }
+
+        // ============================================================
+        // RENDER ALL
+        // ============================================================
+        function renderAll() {
+            regenerateKomutlar();
+            renderCommands();
+            renderTimers();
+        }
+
+        // ============================================================
+        // HELPERS
+        // ============================================================
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function escapeAttr(str) {
+            return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            toast.innerHTML = `<span>${type === 'success' ? '✅' : '❌'}</span> ${escapeHtml(message)}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        // Enter key support
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            const target = e.target;
+            if (target.id === 'cmdName' || target.id === 'cmdResponse') addCommand();
+            if (target.id === 'timerMessage' || target.id === 'customInterval') addTimer();
+        });
+
+        // ============================================================
+        // CHAT STATS / LEADERBOARD
+        // ============================================================
+        const STATS_URL = '/api/kick/stats';
+        let statsData = { totalUsers: 0, totalMessages: 0, users: [] };
+
+        async function loadStats() {
+            try {
+                const res = await fetch(STATS_URL);
+                if (!res.ok) return;
+                statsData = await res.json();
+                renderLeaderboard();
+            } catch (err) {
+                // Silent fail — stats are optional
+            }
+        }
+
+        function renderLeaderboard() {
+            const board = document.getElementById('leaderboard');
+            const users = statsData.users || [];
+
+            document.getElementById('totalUsers').textContent = statsData.totalUsers || 0;
+            document.getElementById('totalMessages').textContent = statsData.totalMessages || 0;
+            document.getElementById('statsCount').textContent = `${users.length} kullanıcı`;
+
+            if (users.length === 0) {
+                board.innerHTML = '<div class="empty-state"><div class="icon">📊</div><div>Henüz veri yok — sohbet başladığında güncellenecek</div></div>';
+                return;
+            }
+
+            board.innerHTML = users.map(user => {
+                let rankClass = '';
+                if (user.rank === 1) rankClass = 'gold';
+                else if (user.rank === 2) rankClass = 'silver';
+                else if (user.rank === 3) rankClass = 'bronze';
+
+                const medal = user.rank === 1 ? '👑' : user.rank === 2 ? '🥈' : user.rank === 3 ? '🥉' : user.rank;
+
+                return `
+                    <div class="lb-row">
+                        <div class="lb-rank ${rankClass}">${medal}</div>
+                        <div class="lb-name">${escapeHtml(user.username)}</div>
+                        <div class="lb-count">${user.messageCount}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function resetStats() {
+            if (!confirm('Tüm sohbet istatistiklerini sıfırlamak istediğinize emin misiniz?')) return;
+
+            try {
+                const res = await fetch(STATS_URL, { method: 'DELETE' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                statsData = { totalUsers: 0, totalMessages: 0, users: [] };
+                renderLeaderboard();
+                showToast('İstatistikler sıfırlandı ✓', 'success');
+            } catch (err) {
+                showToast('Sıfırlama hatası: ' + err.message, 'error');
+            }
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        loadConfig();
+        loadStats();
+
+        // Auto-refresh stats every 15 seconds
+        setInterval(loadStats, 15000);
+    </script>
+</body>
+
+</html>

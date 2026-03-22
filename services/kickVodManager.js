@@ -3,17 +3,16 @@ const path = require('path');
 const { google } = require('googleapis');
 const { exec } = require('child_process');
 const logger = require('./logger');
-
-// Puppeteer imports for Cookie Bypass
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-puppeteer.use(StealthPlugin());
+const puppeteerHelper = require('./puppeteerHelper');
 
 // Configuration
 const TEMP_DIR = path.join(__dirname, '../temp_vods');
 const CREDENTIALS_PATH = path.join(__dirname, '../config/service-account.json');
 const FOLDER_ID = process.env.GDRIVE_FOLDER_ID; // Optional: Set in .env
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+// Global Lock for Channel Slugs
+const activeDownloads = new Set();
 
 // Ensure temp directory exists
 if (!fs.existsSync(TEMP_DIR)) {
@@ -22,30 +21,15 @@ if (!fs.existsSync(TEMP_DIR)) {
 
 /**
  * Sniffs the M3U8 URL by intercepting the internal API call the Kick frontend makes.
- * This is more reliable than waiting for the video to play.
+ * Uses withIsolatedBrowser for guaranteed browser.close().
  * @param {string} channelSlug 
  * @returns {Promise<{m3u8: string, date: string, id: string}>}
  */
 async function getLatestVodM3u8(channelSlug) {
-    logger.log(`VERSION: 4.0 (API Intercept)`);
+    logger.log(`VERSION: 5.0 (puppeteerHelper)`);
     logger.log(`🕵️ [KickVOD] Sniffing Metadata for ${channelSlug}...`);
-    let browser = null;
 
-    try {
-        browser = await puppeteer.launch({
-            headless: 'new',
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--disable-gpu'
-            ]
-        });
-
-        const page = await browser.newPage();
+    return await puppeteerHelper.withIsolatedBrowser(async (browser, page) => {
         await page.setUserAgent(USER_AGENT);
 
         // 1. Get Channel Info to find latest video UUID
@@ -74,8 +58,7 @@ async function getLatestVodM3u8(channelSlug) {
 
         logger.log(`✅ [KickVOD] Found latest VOD UUID: ${videoSlug}`);
 
-        // 2. Direct API Navigation (No more waiting for events)
-        // We act like a browser querying the API directly.
+        // 2. Direct API Navigation
         const videoApiUrl = `https://kick.com/api/v1/video/${videoSlug}`;
         logger.log(`running [KickVOD] Navigating directly to API: ${videoApiUrl}`);
 
@@ -87,7 +70,6 @@ async function getLatestVodM3u8(channelSlug) {
         try {
             videoData = JSON.parse(videoApiContent);
         } catch (e) {
-            // Sometimes Cloudflare returns HTML challenge page instead of JSON text
             logger.error(`❌ [KickVOD] API returned non-JSON content. First 200 chars: ${videoApiContent.substring(0, 200)}`);
             throw new Error("Failed to parse Video API JSON. Likely blocked by Cloudflare.");
         }
@@ -105,19 +87,13 @@ async function getLatestVodM3u8(channelSlug) {
 
         logger.log(`🎯 [KickVOD] Captured M3U8 from API: ${m3u8Url}`);
         return { m3u8: m3u8Url, date: uploadDate, id: videoId };
-
-    } catch (error) {
-        logger.error(`❌ [KickVOD] Sniffing failed: ${error.message}`);
-        throw error;
-    } finally {
-        if (browser) await browser.close();
-    }
+    });
 }
 
 /**
  * Downloads the latest VOD for a Kick channel.
  * @param {string} channelSlug 
- * @returns {Promise<string>} Path to the downloaded file
+ * @returns {Promise<{tempFilePath: string, originalFileName: string}>} Paths
  */
 async function downloadVod(channelSlug) {
     return new Promise(async (resolve, reject) => {
@@ -132,8 +108,10 @@ async function downloadVod(channelSlug) {
         }
 
         const { m3u8, date, id } = vodInfo;
-        const fileName = `${channelSlug}_${date}_${id}.mp4`;
-        const outputPath = path.join(TEMP_DIR, fileName);
+        const originalFileName = `${channelSlug}_${date}_${id}.mp4`;
+        // Unique temp filename to avoid collision if multiple processes run or zombie files exist
+        const tempFileName = `${channelSlug}_${date}_${id}_${Date.now()}.mp4`;
+        const outputPath = path.join(TEMP_DIR, tempFileName);
 
         // Determine Python Path
         let pythonPath = 'python';
@@ -163,7 +141,7 @@ async function downloadVod(channelSlug) {
 
             if (fs.existsSync(outputPath)) {
                 logger.log(`✅ [KickVOD] Download complete: ${outputPath}`);
-                resolve(outputPath);
+                resolve({ tempFilePath: outputPath, originalFileName });
             } else {
                 reject(new Error("Download finished but file not found."));
             }
@@ -174,9 +152,10 @@ async function downloadVod(channelSlug) {
 /**
  * Uploads a file to Google Drive.
  * @param {string} filePath 
- * @returns {Promise<void>}
+ * @param {string|null} targetFileName Optional target filename on Drive
+ * @returns {Promise<string>} File ID
  */
-async function uploadToDrive(filePath) {
+async function uploadToDrive(filePath, targetFileName = null) {
     if (!fs.existsSync(CREDENTIALS_PATH)) {
         const msg = `Google Drive credentials not found at ${CREDENTIALS_PATH}`;
         logger.error(`❌ [KickVOD] ${msg}`);
@@ -201,7 +180,7 @@ async function uploadToDrive(filePath) {
     try {
         const response = await drive.files.create({
             requestBody: {
-                name: path.basename(filePath),
+                name: targetFileName || path.basename(filePath),
                 parents: [FOLDER_ID]
             },
             media: {
@@ -223,20 +202,33 @@ async function uploadToDrive(filePath) {
  * @param {string} channelSlug 
  */
 async function processVod(channelSlug) {
-    try {
-        // 1. Download
-        const filePath = await downloadVod(channelSlug);
+    if (activeDownloads.has(channelSlug)) {
+        logger.warn(`⚠️ [KickVOD] Download already in progress for ${channelSlug}. Skipping.`);
+        return;
+    }
 
-        // 2. Upload
-        await uploadToDrive(filePath);
+    activeDownloads.add(channelSlug);
+    logger.log(`🔐 [KickVOD] Lock acquired for ${channelSlug}`);
+
+    try {
+        // 1. Download (Returns object now)
+        const { tempFilePath, originalFileName } = await downloadVod(channelSlug);
+
+        // 2. Upload (Pass original filename)
+        await uploadToDrive(tempFilePath, originalFileName);
 
         // 3. Cleanup
-        fs.unlinkSync(filePath);
-        logger.log(`🗑️ [KickVOD] Local file deleted: ${filePath}`);
+        if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+            logger.log(`🗑️ [KickVOD] Local temp file deleted: ${tempFilePath}`);
+        }
 
     } catch (error) {
         logger.error(`❌ [KickVOD] Process failed for ${channelSlug}: ${error.message}`);
         throw error; // Rethrow for command handler
+    } finally {
+        activeDownloads.delete(channelSlug);
+        logger.log(`🔓 [KickVOD] Lock released for ${channelSlug}`);
     }
 }
 

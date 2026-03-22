@@ -1,0 +1,19 @@
+{
+  "initialized": true,
+  "channelName": "sevolololo",
+  "chatroomId": 26899273,
+  "connected": true,
+  "connectionState": "connected",
+  "activeTimers": [
+    "timer_1772649321954",
+    "timer_1772649326180"
+  ],
+  "stats": {
+    "connectedAt": "2026-03-22T01:12:45.620Z",
+    "messagesReceived": 0,
+    "commandsProcessed": 0,
+    "timerMessagesSent": 0,
+    "lastError": null
+  },
+  "hasOAuthToken": true
+}

@@ -23,7 +23,8 @@ module.exports = {
         const platform = interaction.options.getString('platform');
         const identifier = interaction.options.getString('identifier');
 
-        const removed = storage.removeWatch(interaction.guildId, platform, identifier);
+        const guildId = interaction.guildId || interaction.user.id;
+        const removed = storage.removeWatch(guildId, platform, identifier);
 
         if (removed) {
             await interaction.reply(`🗑️ **${identifier}** (${platform}) listeden silindi.`);

@@ -109,12 +109,82 @@ const quotes = [
     "Güneşin sana ulaşmasını istiyorsan, gölgeden çıkmalısın.",
     "Hiçbir kış sonsuza kadar sürmez; her gecenin bir sabahı, her kışın bir baharı vardır.",
     "Düşmek ayıp değil, kalkmamak ayıptır; tozunu silkele ve yoluna devam et.",
-    "Hayat, cesurları sever; risk al, adım at ve hikayeni yaz."
+    "Hayat, cesurları sever; risk al, adım at ve hikayeni yaz.",
+
+    // YARATICI VE BİRAZ DA CESUR MOTİVASYONLAR
+    "Eğer dibe vurduysan sevin; çünkü düşeceğin daha aşağısı kalmadı. Artık tek yön yukarı!",
+    "Elalemin senin dertlerinle zerre ilgilenmediğini anladığın an, gerçekten özgürleştiğin andır. Kalk ve sadece kendin için savaş.",
+    "Mükemmellik tamamen bir yalan, ilerleme ise gerçektir. Her şeyi kusursuz yapmayı beklerken hayatı kaçırıyorsun; yola çık, yolda düzeltirsin.",
+    "'Yarın yaparım' dediğin o efsanevi gün hiçbir zaman gelmeyecek. Takvimde 'yarın' diye bir gün yok. Silkelen ve başla!",
+    "Herkesin harika bir planı vardır, ta ki hayatın sillesini suratına yiyene kadar. Silleyi yedin mi? Süper. Şimdi asıl savaş başlıyor.",
+    "Konfor alanın, hayallerinin en büyük mezarlığıdır. Eğer gerçekten bir şeyler başarmak istiyorsan, o rahat koltuğundan hemen kalkmalısın.",
+    "Odanı toplamadan dünyayı kurtaramazsın. Küçücük bir adımla başla, büyük düşün, acımasızca uygula.",
+    "Sadece çok isteyenler değil, o uğurda rahatını feda edebilenler kazanır. İnan ki konfor alanında hiçbir mucize yeşermez.",
+    "Dünyada milyonlarca insan seninle aynı hayatı hayal ediyor. Aradaki farkı, şu an bahaneleri bir kenara fırlatıp eyleme geçen kişi belirleyecek.",
+    "Bir şeyden çok korkuyorsan, muhtemelen tam olarak yapman gereken şey odur. Korkuyu pusula yap, neyden çekiniyorsan onun tam üzerine koş.",
+    "Şu an nerede olursan ol, bundan 5 yıl sonrasının provasını yapıyorsun. Gelecekteki sana ihanet etmemek için bugün sızlanmayı bırak ve işe koyul.",
+    "Sırrını vereyim mi? Kimse gelip seni kurtarmayacak. Kendi hikayenin kahramanı da sensin, figüranı da. Sahne senin.",
+    "Motivasyon dediğin şey sabun köpüğüdür, disiplin ise beton. Canın istemediğinde bile o masaya oturduğun gün, hayatını değiştirdiğin gündür.",
+
+    // DEVAMI: EKSTRA SAYIDA CESUR/SARKASTİK MOTİVASYON SÖZLERİ
+    "Uyumaya devam edersen rüyalarını sadece izlersin, ama şimdi kalkıp çalışırsan o rüyaları yaşarsın. Seçim senin; yastık mı, gerçek hayat mı?",
+    "Birileri senin başarısız olmanı büyük bir zevkle bekliyor. Onlara bu zevki tattırmak istiyorsan, dur, hiçbir şey yapma.",
+    "Başarı merdivenleri yürüyen merdiven değil. O terlikleri çıkarıp o basamakları teker teker tırmanman gerekecek, kusura bakma.",
+    "Her gün aynı sıradan şeyleri yaparak mucizevi bir şekilde farklı sonuçlar bekliyorsan, sana motivasyon değil, terapi lazım.",
+    "Eğer herkesin gittiği rahat yoldan gidersen, varacağın yer sadece sıradan bir kalabalığın ortası olur. Kendine bunu reva mı görüyorsun?",
+    "Şu an şikayet ettiğin her şey aslında geçmişteki kendi seçimlerinin bir sonucu. Değiştirmek senin elindeyken ağlanıp durmanın bir faydası var mı?",
+    "Zamanın su gibi akıp gidiyor ve bedava diye hiç değerini bilmiyorsun. Oysa evrendeki en pahalı şey kaybettiğin zamandır.",
+    "Sana kimse altın bir tepside süper bir hayat sunmayacak. Elini kire, çamura sok; o altını sen çıkar.",
+    "Sosyal medyada gördüğün sahte başarı hikayelerine aldanıp kendini yetersiz hissedeceğine, kalkıp kendi orijinal destanını yazsana.",
+    "Kötü bir haberim var: Hayat adil değil ve sana torpil yapmayacak. İyi haber ise: Rakiplerin de muhtemelen senin kadar üşengeç.",
+    "Kendine acımayı bırak. Aynaya bak, orada gördüğün o potansiyeli harcamaya hiç mi utanmıyorsun?",
+    "Vazgeçmenin ne kadar tatlı ve rahat olduğunu herkes bilir, asıl olay devam etmenin getirdiği o acılı gururu her gün yeniden tadabilmektir.",
+    "Yıllar sonra arkana dönüp baktığında 'keşke' demenin verdiği o boğucu sızı, şu an yorularak hissettiğin anlık acıdan çok daha büyüktür.",
+    "Ne bekliyorsun? Gökten ilahi bir işaret inmesini mi? Al sana işaret: Bu sözü okur okumaz git ve o işe hemen başla.",
+    "Evren senin kararsızlıklarını izleyip köşede kıs kıs gülüyor. Net bir karar ver, yola koyul ve evrene patronun kim olduğunu göster.",
+    "Başarılı insanların büyük bir sırrı yok. Onlar da en az senin kadar korkuyordu ama bir farkla: Titreye titreye olsa bile o adımı attılar.",
+    "Kendi zihninin kendi elleriyle yarattığı o görünmez duvarları nasıl ördüysen, şimdi o şekilde yık. Orada öyle bir duvar falan yok, sadece sensin.",
+    "Başarısız olmaktan değil, bir ömür boyu vasat bir şekilde ve kimsenin umrunda olmadan yaşlanmaktan korkmalısın.",
+    "Kolay yoldan zirveye varan tek şey asansördür. Sen insan evladısın, ter dökerek merdivenleri tırmanacaksın.",
+    "Büyük hedefleri küçümseyen insanların hayatlarına bir bak; hiçbir zaman büyük bir şey başaramamışlardır. Onların garipliğine aldırma.",
+    "Mükemmel zamanı beklersen, hayatının sonuna kadar sıkıcı bir bekleme salonunda oturursun. O kapıyı kır ve sahaya çık artık.",
+    "Kendine 'Acaba yapabilir miyim?' diye sormayı bırak. Kafandaki o şüpheci ve toksik sesi bir süreliğine sessize al, sonuçları sonraya sakla.",
+    "Eleştirilerden korktuğun için sessiz, renksiz, şekilsiz bir hayat mı yaşamayı tercih ediyorsun? Bırak arkandan konuşsunlar, sen önden yürümeye devam et.",
+    "Sen bir başyapıt değilsin, henüz tamamlanmamış ve karalanmış bir taslaksın. Hatalarından korkma, silgini kullan ve yola devam et.",
+    "Hiçbir başarı hikayesi 'O kadar çok uyumuştum ki...' veya 'Beş sezon daha dizi izledim ki...' diye başlamaz.",
+    "Şans diye bir şey elbette var ama emin ol ki o sadece çalışanı buluyor. Tembelsen şans sana çarpsa da üzerinden seker geçer.",
+    "Canının istemesi ve motive olmak sadece bir lüks. Eğer sadece hevesli olduğunda çalışırsan, hayatın boyunca sadece bir heves olarak kalırsın.",
+    "Fırtınalara direnerek koca bir meşe ağacı olursun. Ufak bir rüzgar estiğinde hemen yaprak döken cılız otlardan olma.",
+    "Denemezsen %100 başarısızlık garantidir. Dener ve kaybedersen sadece çok değerli bir tecrübe edinirsin. Hesap ortada, yap şu matematiği.",
+    "Hayatında bir şeyler gerçek anlamda değişsin istiyorsan, hayatına havalı farklı cümleler kurmaya değil, farklı ve zor adımlar atmaya başla.",
+    "Kesin pes ettiğin o karanlık saniye, tam da işlerin yoluna girmeye başlayacağı aydınlık andır belki de. Nereden biliyorsun?",
+    "Sorun şu ki, sen her şeye ama her şeye yetecek vaktinin olduğunu sanıyorsun. Haklısın, ama o süre her saniye giderek kısalıyor farkında değil misin?",
+    "Bir şampiyon ile sıradan bir kaybeden arasındaki fark son derece basittir: Kaybeden, düştüğünde yerde kalmayı seçer.",
+    "Eğer kendi hayatın tam donanımlı bir oyun olsaydı, şu an sence ana karakter misin yoksa köşede dikilen anlamsız bir NPC mi? Kendine gel.",
+    "Terlemeden, bedel ödemeden, uykusuz kalmadan elde ettiğin o sözde başarı, ilk yağmurda çamur olup akar gider.",
+    "Kendi içindeki o amansız potansiyeli serbest bırakmadığın her saniye kendine ihanet ediyorsun. İhaneti bırak da icraata geç.",
+    "Sorunlarını görmezden geldiğinde sihirli bir perinin gelip çözeceğini sanıyorsan, sana kötü bir haberim var.",
+    "Daha iyisini hak ettiğini düşünüyorsan, önce git o iyisine uzanmak için bir zahmet çaba göster.",
+    "Gelecekteki kendine dönüp küfretmek istemiyorsan, yarınlarına bir kıyak yap ve bugün kıçını kaldır.",
+    "Zaman sürekli akıyor ve asla acıması yok. Sen dursan da dünya dönmeye devam ediyor, trene binmek senin elinde."
 ];
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const isBot = searchParams.get('bot') === 'true';
+    const user = searchParams.get('user');
+
+    // Özel kişi kontrolü: at-kafasii veya AT_KAFASII
+    if (user && (user.toLowerCase() === 'at_kafasii' || user.toLowerCase() === 'at-kafasii')) {
+        const specialMessage = "sana motivisyon falan yok beğenmiyosun benim motivisyonlarımı";
+        if (isBot) {
+            return new Response(specialMessage, {
+                status: 200,
+                headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+            });
+        }
+        return NextResponse.json({ quote: specialMessage });
+    }
 
     const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
 

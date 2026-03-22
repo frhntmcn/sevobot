@@ -5,27 +5,73 @@
       "mentionsEnabled": true,
       "watched": [
         {
+          "platform": "kick",
+          "identifier": "irmylcn",
+          "vodEnabled": false
+        },
+        {
           "platform": "twitch",
-          "identifier": "irmylcn"
+          "identifier": "irmylcn",
+          "vodEnabled": false
         },
         {
           "platform": "twitch",
-          "identifier": "nazaltnbass"
+          "identifier": "nazaltnbass",
+          "vodEnabled": false
+        },
+        {
+          "platform": "twitch",
+          "identifier": "rottenmartlet",
+          "vodEnabled": false
         },
         {
           "platform": "kick",
-          "identifier": "sevolololo"
+          "identifier": "sevolololo",
+          "vodEnabled": false
         },
         {
           "platform": "kick",
-          "identifier": "nazaltinbas"
-        },
-        {
-          "platform": "kick",
-          "identifier": "irmylcn"
+          "identifier": "nazaltinbas",
+          "vodEnabled": false
         }
       ]
+    },
+    "244128211762544640": {
+      "notifyChannelId": null,
+      "mentionsEnabled": false,
+      "watched": []
     }
   },
-  "streamState": {}
+  "streamState": {
+    "twitch:rottenmartlet": {
+      "lastStatus": "offline",
+      "lastNotified": 1771100548937,
+      "lastStreamId": "316152390375"
+    },
+    "kick:irmylcn": {
+      "lastStatus": "offline",
+      "lastNotified": 1772818915046,
+      "lastStreamId": 99609536
+    },
+    "twitch:irmylcn": {
+      "lastStatus": "offline",
+      "lastNotified": 1772818912032,
+      "lastStreamId": "318179609307"
+    },
+    "twitch:nazaltnbass": {
+      "lastStatus": "offline",
+      "lastNotified": 1773870585628,
+      "lastStreamId": "316668554725"
+    },
+    "kick:nazaltinbas": {
+      "lastStatus": "offline",
+      "lastNotified": 1773870589278,
+      "lastStreamId": 101264231
+    },
+    "kick:sevolololo": {
+      "lastStatus": "offline",
+      "lastNotified": 1774118578959,
+      "lastStreamId": 101634085
+    }
+  }
 }

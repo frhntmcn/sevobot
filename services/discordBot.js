@@ -1,6 +1,7 @@
 const { Client, GatewayIntentBits, Collection, REST, Routes } = require('discord.js');
 const roleMessages = require('../config/roleMessages');
 const { startStreamManager } = require('./streamManager');
+const { handlePlayCommand, handleStopCommand, handleSkipCommand, handleQueueCommand } = require('./musicPlayer');
 
 const client = new Client({
     intents: [
@@ -9,6 +10,7 @@ const client = new Client({
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildVoiceStates,
     ],
 });
 
@@ -50,15 +52,12 @@ client.once('clientReady', async () => {
         await rest.put(Routes.applicationCommands(client.user.id), { body: [] });
         console.log('Successfully deleted all Global commands.');
 
-        // 2. Register for each guild individually for immediate update (bypasses 1-hour global cache)
-        const guilds = client.guilds.cache.map(guild => guild.id);
-        for (const guildId of guilds) {
-            await rest.put(
-                Routes.applicationGuildCommands(client.user.id, guildId),
-                { body: commandsToRegister },
-            );
-            console.log(`Successfully registered commands for guild: ${guildId}`);
-        }
+        // 2. Register global commands
+        await rest.put(
+            Routes.applicationCommands(client.user.id),
+            { body: commandsToRegister },
+        );
+        console.log('Successfully registered all Global commands.');
 
     } catch (error) {
         console.error('Error registering commands:', error);
@@ -116,8 +115,21 @@ client.on('guildMemberUpdate', async (oldMember, newMember) => {
 });
 
 client.on('messageCreate', async (message) => {
+    if (message.author.bot) return;
+
     if (message.content === '!ping') {
         await message.reply('Pong! (Legacy command)');
+    }
+
+    // Music Commands
+    if (message.content.startsWith('!play ')) {
+        await handlePlayCommand(message);
+    } else if (message.content === '!stop') {
+        await handleStopCommand(message);
+    } else if (message.content === '!skip' || message.content === '!next') {
+        await handleSkipCommand(message);
+    } else if (message.content === '!queue') {
+        await handleQueueCommand(message);
     }
 });
 
@@ -134,7 +146,7 @@ const getAuthenticatedClient = async () => {
         console.log("Client not ready, logging in...");
         await client.login(process.env.DISCORD_TOKEN);
         // Wait for ready
-        await new Promise(resolve => client.once('ready', resolve));
+        await new Promise(resolve => client.once('clientReady', resolve));
     }
     return client;
 };

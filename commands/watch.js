@@ -20,13 +20,14 @@ module.exports = {
         const identifier = interaction.options.getString(subcommand === 'twitch' ? 'username' : 'slug');
         const platform = subcommand;
 
-        const added = storage.addWatch(interaction.guildId, platform, identifier);
+        const guildId = interaction.guildId || interaction.user.id;
+        const added = storage.addWatch(guildId, platform, identifier);
 
         if (added) {
             let msg = `✅ **${identifier}** (${platform}) izleme listesine eklendi.`;
 
             // Check if notify channel is set
-            const guild = storage.getGuild(interaction.guildId);
+            const guild = storage.getGuild(guildId);
             if (!guild.notifyChannelId) {
                 msg += `\n\n⚠️ **Dikkat:** Henüz bildirim kanalı ayarlamadınız! Bot bildirim gönderemez.\nLütfen \`/notify-channel\` komutunu kullanarak bir kanal seçin.`;
             }

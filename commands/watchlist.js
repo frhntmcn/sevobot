@@ -7,7 +7,8 @@ module.exports = {
         .setDescription('İzlenen yayıncıları listeler.'),
 
     async execute(interaction) {
-        const watched = storage.getWatchList(interaction.guildId);
+        const guildId = interaction.guildId || interaction.user.id;
+        const watched = storage.getWatchList(guildId);
 
         if (!watched || watched.length === 0) {
             return interaction.reply('📭 İzleme listeniz boş.');
@@ -19,6 +20,10 @@ module.exports = {
         let msg = '**📋 İzleme Listesi**\n\n';
         if (twitchList) msg += `**Twitch:**\n${twitchList}\n\n`;
         if (kickList) msg += `**Kick:**\n${kickList}`;
+
+        if (!twitchList && !kickList) {
+            msg += 'Liste boş.';
+        }
 
         await interaction.reply(msg);
     },

@@ -50,7 +50,8 @@ module.exports = {
         const platform = subcommand; // 'kick'
 
         // Check if channel is watched
-        const guildData = storage.getGuild(interaction.guildId);
+        const guildId = interaction.guildId || interaction.user.id;
+        const guildData = storage.getGuild(guildId);
         const isWatched = guildData.watched.some(w => w.platform === platform && w.identifier === identifier);
 
         if (!isWatched) {
@@ -60,7 +61,7 @@ module.exports = {
             });
         }
 
-        const success = storage.setVodEnabled(interaction.guildId, platform, identifier, enabled);
+        const success = storage.setVodEnabled(guildId, platform, identifier, enabled);
 
         if (success) {
             await interaction.reply({

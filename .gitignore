@@ -42,3 +42,12 @@ next-env.d.ts
 
 # local data
 # data/
+
+# Logs and temp files
+logs*.txt
+*_logs.txt
+*.exe
+*-player-script.js
+puppeteer_data/
+.vscode/
+test_mix.json
